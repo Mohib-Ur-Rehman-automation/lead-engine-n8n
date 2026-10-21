@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+/* Halden Solar Co. quote form. Light by default, dark when the visitor's system is dark. */
+:root {
+  --font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-size-body: 16px; --font-size-label: 14px; --font-size-input: 16px; --font-size-header: 31px;
+  --font-size-paragraph: 16px; --font-size-link: 14px; --font-size-error: 14px; --font-size-test-notice: 14px;
+  --color-background: #F6F8F7; --color-card-bg: #FFFFFF; --color-card-border: #DFE6E4; --color-card-shadow: transparent;
+  --color-link: #4E6260; --color-header: #0F2624; --color-label: #0F2624; --color-input-border: #DFE6E4;
+  --color-input-text: #0F2624; --color-input-bg: #FFFFFF; --color-focus-border: #145A55;
+  --color-submit-btn-bg: #145A55; --color-submit-btn-text: #FFFFFF; --color-required: #145A55;
+  --color-error: #B42318; --color-html-text: #4E6260; --color-html-link: #145A55;
+  --border-radius-card: 12px; --border-radius-input: 8px; --padding-card: 32px; --submit-btn-height: 52px;
+  --hl-logo: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cpath%20d%3D%22M8%2026%20A12%2012%200%200%201%2032%2026%20Z%22%20fill%3D%22%23E0A21B%22%2F%3E%3Cpath%20d%3D%22M4%2026H36%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M20%206v4M9%2011l2.8%202.8M31%2011l-2.8%202.8%22%20stroke%3D%22%23E0A21B%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); --hl-arc: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20520%20250%22%3E%3Cline%20x1%3D%2220%22%20y1%3D%22236%22%20x2%3D%22500%22%20y2%3D%22236%22%20stroke%3D%22%23DFE6E4%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M60%20236%20A200%20200%200%200%201%20460%20236%22%20fill%3D%22none%22%20stroke%3D%22%234E6260%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%222%208%22%2F%3E%3Ccircle%20cx%3D%2275.3%22%20cy%3D%22214.1%22%20r%3D%224%22%20fill%3D%22%23E3A257%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2267.5%22%20cy%3D%22181.7%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2267.5%22%20cy%3D%22142.6%22%20r%3D%227%22%20fill%3D%22%23954F00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22107.4%22%20cy%3D%22129.6%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22113.1%22%20cy%3D%22100.2%22%20r%3D%224%22%20fill%3D%22%23E3A257%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22127.5%22%20cy%3D%2267.9%22%20r%3D%227%22%20fill%3D%22%23954F00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22172.3%22%20cy%3D%2272.0%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22205.7%22%20cy%3D%2243.5%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22234.8%22%20cy%3D%2223.5%22%20r%3D%227%22%20fill%3D%22%23954F00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22278.2%22%20cy%3D%2250.9%22%20r%3D%224%22%20fill%3D%22%23E3A257%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22310.5%22%20cy%3D%2242.5%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22349.6%22%20cy%3D%2241.7%22%20r%3D%227%22%20fill%3D%22%23954F00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22366.4%22%20cy%3D%2283.4%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22398.6%22%20cy%3D%2291.8%22%20r%3D%224%22%20fill%3D%22%23E3A257%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22433.1%22%20cy%3D%22110.2%22%20r%3D%227%22%20fill%3D%22%23954F00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22427.4%22%20cy%3D%22154.8%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22452.5%22%20cy%3D%22181.7%22%20r%3D%224%22%20fill%3D%22%23E3A257%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22472.5%22%20cy%3D%22210.8%22%20r%3D%225.5%22%20fill%3D%22%23CD7D00%22%20stroke%3D%22%23F6F8F7%22%20stroke-width%3D%223%22%2F%3E%3C%2Fsvg%3E"); --hl-sun: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%2070%22%3E%3Cpath%20d%3D%22M30%2060%20A30%2030%200%200%201%2090%2060%20Z%22%20fill%3D%22%23E0A21B%22%2F%3E%3Cpath%20d%3D%22M14%2060H106%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M60%2012v10M28%2026l7%207M92%2026l-7%207M14%2044h9M97%2044h9%22%20stroke%3D%22%23E0A21B%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --hl-ink: #0F2624; --hl-muted: #4E6260; --hl-rule: #DFE6E4; --hl-focus: rgba(20,90,85,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+  --font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-size-body: 16px; --font-size-label: 14px; --font-size-input: 16px; --font-size-header: 31px;
+  --font-size-paragraph: 16px; --font-size-link: 14px; --font-size-error: 14px; --font-size-test-notice: 14px;
+  --color-background: #0F2624; --color-card-bg: #153231; --color-card-border: #24413F; --color-card-shadow: transparent;
+  --color-link: #9DB8B3; --color-header: #EEF2EF; --color-label: #EEF2EF; --color-input-border: #24413F;
+  --color-input-text: #EEF2EF; --color-input-bg: #0F2624; --color-focus-border: #F5AC1F;
+  --color-submit-btn-bg: #F5AC1F; --color-submit-btn-text: #0F2624; --color-required: #F5AC1F;
+  --color-error: #FF9B8F; --color-html-text: #9DB8B3; --color-html-link: #F5AC1F;
+  --border-radius-card: 12px; --border-radius-input: 8px; --padding-card: 32px; --submit-btn-height: 52px;
+  --hl-logo: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cpath%20d%3D%22M8%2026%20A12%2012%200%200%201%2032%2026%20Z%22%20fill%3D%22%23F5AC1F%22%2F%3E%3Cpath%20d%3D%22M4%2026H36%22%20stroke%3D%22%23EEF2EF%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M20%206v4M9%2011l2.8%202.8M31%2011l-2.8%202.8%22%20stroke%3D%22%23F5AC1F%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); --hl-arc: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20520%20250%22%3E%3Cline%20x1%3D%2220%22%20y1%3D%22236%22%20x2%3D%22500%22%20y2%3D%22236%22%20stroke%3D%22%2324413F%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M60%20236%20A200%20200%200%200%201%20460%20236%22%20fill%3D%22none%22%20stroke%3D%22%239DB8B3%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%222%208%22%2F%3E%3Ccircle%20cx%3D%2275.3%22%20cy%3D%22214.1%22%20r%3D%224%22%20fill%3D%22%237A5F25%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2267.5%22%20cy%3D%22181.7%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%2267.5%22%20cy%3D%22142.6%22%20r%3D%227%22%20fill%3D%22%23F5AC1F%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22107.4%22%20cy%3D%22129.6%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22113.1%22%20cy%3D%22100.2%22%20r%3D%224%22%20fill%3D%22%237A5F25%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22127.5%22%20cy%3D%2267.9%22%20r%3D%227%22%20fill%3D%22%23F5AC1F%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22172.3%22%20cy%3D%2272.0%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22205.7%22%20cy%3D%2243.5%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22234.8%22%20cy%3D%2223.5%22%20r%3D%227%22%20fill%3D%22%23F5AC1F%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22278.2%22%20cy%3D%2250.9%22%20r%3D%224%22%20fill%3D%22%237A5F25%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22310.5%22%20cy%3D%2242.5%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22349.6%22%20cy%3D%2241.7%22%20r%3D%227%22%20fill%3D%22%23F5AC1F%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22366.4%22%20cy%3D%2283.4%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22398.6%22%20cy%3D%2291.8%22%20r%3D%224%22%20fill%3D%22%237A5F25%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22433.1%22%20cy%3D%22110.2%22%20r%3D%227%22%20fill%3D%22%23F5AC1F%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22427.4%22%20cy%3D%22154.8%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22452.5%22%20cy%3D%22181.7%22%20r%3D%224%22%20fill%3D%22%237A5F25%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22472.5%22%20cy%3D%22210.8%22%20r%3D%225.5%22%20fill%3D%22%23B8831C%22%20stroke%3D%22%230F2624%22%20stroke-width%3D%223%22%2F%3E%3C%2Fsvg%3E"); --hl-sun: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%2070%22%3E%3Cpath%20d%3D%22M30%2060%20A30%2030%200%200%201%2090%2060%20Z%22%20fill%3D%22%23F5AC1F%22%2F%3E%3Cpath%20d%3D%22M14%2060H106%22%20stroke%3D%22%23EEF2EF%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M60%2012v10M28%2026l7%207M92%2026l-7%207M14%2044h9M97%2044h9%22%20stroke%3D%22%23F5AC1F%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --hl-ink: #EEF2EF; --hl-muted: #9DB8B3; --hl-rule: #24413F; --hl-focus: rgba(245,172,31,.22);
+  }
+  select option { background: #153231; color: #EEF2EF; }
+}
+
+body { min-height: 100vh; line-height: 26px; }
+.container {
+  width: 100%; max-width: 1120px; margin: 0 auto; padding: 40px 40px 56px; text-align: left;
+  display: grid; grid-template-columns: minmax(0, 1fr) 460px; column-gap: 72px;
+  grid-template-areas: "logo logo" "head form" "steps form" "foot form"; align-items: start;
+}
+section { display: contents; }
+
+/* Brand row */
+.container::before {
+  grid-area: logo; content: 'Halden Solar Co.'; display: block; margin-bottom: 56px;
+  padding-left: 52px; min-height: 40px; line-height: 40px;
+  background: var(--hl-logo) left center / 40px 40px no-repeat;
+  font-family: 'DM Serif Display', Georgia, serif; font-size: 25px; color: var(--hl-ink);
+}
+/* Headline */
+section::before {
+  grid-area: head; content: 'Solar sized\A to your bill.'; white-space: pre-line; display: block; margin-top: 24px;
+  font-family: 'DM Serif Display', Georgia, serif; font-size: 61px; line-height: 64px; letter-spacing: -0.01em;
+  color: var(--hl-ink); max-width: 520px;
+}
+/* What happens next, plus the sun-arc illustration */
+section::after {
+  grid-area: steps; display: block; margin-top: 24px; max-width: 520px; white-space: pre-line;
+  content: 'Tell us about your roof and your monthly bill. You get a personal reply by email in under a minute, and a solar advisor calls you within one working hour.\A\A 1.  Share your bill, timeline and property\A 2.  Get your reply and a rough estimate\A 3.  Book a free site survey for an exact quote';
+  font-size: 18px; line-height: 30px; color: var(--hl-muted);
+  padding-bottom: 260px; background: var(--hl-arc) left bottom / 520px 250px no-repeat;
+}
+
+/* Form card */
+form.card, #submitted-form { grid-area: form; grid-row: 2 / span 3; box-shadow: none; margin: 24px 0 0; }
+.form-header h1 { font-family: 'DM Serif Display', Georgia, serif; line-height: 38px; text-align: left; }
+.form-header p { text-align: left; line-height: 26px; color: var(--hl-muted); padding-top: 8px; }
+.inputs-wrapper { padding-top: 24px; padding-bottom: 8px; }
+form label { font-weight: 500; line-height: 20px; padding-bottom: 8px; }
+form .form-input, form select { padding: 12px 14px; line-height: 24px; }
+form textarea { min-height: 112px; }
+form .form-input:focus, .select-input:focus-within { box-shadow: 0 0 0 4px var(--hl-focus); }
+.error-hidden { padding-top: 4px; padding-bottom: 8px; line-height: 20px; }
+#submit-btn { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+#submit-btn:hover { opacity: 0.88; }
+#submit-btn:focus-visible { outline: 3px solid var(--hl-focus); outline-offset: 2px; }
+hr, .n8n-link { display: none; }
+.test-notice { grid-column: 1 / -1; }
+
+/* Thank-you card (replaces the default "Form Submitted") */
+#submitted-form { padding: 40px 32px; text-align: left; }
+#submitted-form::before {
+  content: ''; display: block; width: 120px; height: 70px; margin-bottom: 24px;
+  background: var(--hl-sun) left top / 120px 70px no-repeat;
+}
+#submitted-header { font-size: 0 !important; line-height: 0; }
+#submitted-header::after {
+  content: 'Thank you.\A We are on it.'; white-space: pre-line; display: block;
+  font-family: 'DM Serif Display', Georgia, serif; font-size: 39px; line-height: 44px; color: var(--hl-ink);
+}
+#submitted-content { padding-top: 16px; font-size: 18px; line-height: 30px; color: var(--hl-ink); }
+#submitted-content::after {
+  content: 'What happens next'; display: block; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--hl-rule);
+  font-size: 16px; line-height: 24px; font-weight: 700; color: var(--hl-ink);
+}
+#submitted-form .form-header::after {
+  content: '1.  If you gave an email, your reply arrives in under a minute.\A 2.  A solar advisor calls within one working hour, 9 am to 7 pm, Monday to Saturday.\A 3.  Reply to that email with a photo of your latest bill to speed things up.';
+  display: block; white-space: pre-line; margin-top: 8px; padding-left: 0;
+  font-size: 16px; line-height: 28px; color: var(--hl-muted);
+}
+
+/* Phones and small tablets */
+@media (max-width: 960px) {
+  .container {
+    max-width: 560px; padding: 24px 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "logo" "head" "form" "steps";
+  }
+  .container::before { margin-bottom: 24px; }
+  section::before { font-size: 39px; line-height: 44px; margin-top: 0; margin-bottom: 8px; }
+  form.card, #submitted-form { grid-row: auto; margin-top: 16px; padding: 24px !important; border: 1px solid var(--color-card-border) !important; border-radius: 12px !important; background-color: var(--color-card-bg) !important; }
+  .container { width: 100% !important; min-height: 0 !important; }
+  hr { display: none !important; }
+  :root { --padding-card: 24px; }
+  section::after { padding-bottom: 210px; background-size: 100% auto; margin-top: 32px; font-size: 16px; line-height: 28px; }
+}

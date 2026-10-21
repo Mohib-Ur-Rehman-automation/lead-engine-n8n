@@ -1,0 +1,306 @@
+{
+  "name": "L4 Digest + board (Lead Engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## L4 · Digest + Speed-to-Lead board\n**Board:** open `/webhook/halden-board` in a browser. Last 7 days from HubSpot: median seconds from form submit to first email, tiers, reply rate, newest leads. Refreshes every minute.\n**Digest:** every day at **8 AM PKT**, the same numbers for the last 24 hours plus the hot-lead list, emailed to the team.\n\nOne path for both: the trigger decides the mode.",
+        "height": 330,
+        "width": 660,
+        "color": 7
+      },
+      "id": "7cf93281-9ac2-4f29-86a4-35b6c7e5996d",
+      "name": "Note 4904b9",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Numbers come from HubSpot only\n4 searches: recent leads (newest 100) + totals for awaiting / replied / closed.\nAll lead text is HTML-escaped before it reaches the page or email.\nThe board is read-only. Before putting n8n on the public internet, add Basic Auth to the webhook.",
+        "height": 330,
+        "width": 620,
+        "color": 4
+      },
+      "id": "ae8a178b-c2f0-4bea-9cec-b7dfa9fd9b2e",
+      "name": "Note ff29f2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        112,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "path": "halden-board",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "6a8688cb-b872-4049-a8df-1b9717108f8a",
+      "name": "Board URL (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        16
+      ],
+      "webhookId": "8bf360ed-4158-43e7-ab19-ee373fe63030"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "4f9bd043-2ec5-4251-8206-6ee8798df84b",
+      "name": "Every day 8 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -512,
+        176
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e40517c8-7e2b-486d-b4e8-bf1abb845d14",
+      "name": "Send digest now (test)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SETTINGS: edit once =====\nconst SETTINGS = {\n  BRAND: 'Halden Solar Co.',\n  FROM_EMAIL: 'you@example.com',\n  TEAM_EMAIL: 'you@example.com',\n  HUBSPOT_PORTAL_ID: '',               // optional: makes lead names clickable on the board\n};\n// ===============================\n// Board (opened in a browser) looks at the last 7 days; the 8 AM digest at the last 24 hours.\nconst it = $input.first().json || {};\nconst mode = it.headers !== undefined ? 'board' : 'digest';\nconst now = Date.now();\nconst since = now - (mode === 'board' ? 7 : 1) * 24 * 3600 * 1000;\nconst PROPS = ['firstname', 'lastname', 'city', 'lead_score', 'lead_tier', 'engine_status', 'followup_stage',\n  'first_reply_seconds', 'ai_summary', 'createdate', 'email', 'phone'];\nconst status = s => ({ filterGroups: [{ filters: [{ propertyName: 'engine_status', operator: 'EQ', value: s }] }], limit: 1, properties: ['engine_status'] });\nconst queries = [\n  { key: 'recent', body: { filterGroups: [{ filters: [\n      { propertyName: 'lead_key', operator: 'HAS_PROPERTY' },\n      { propertyName: 'createdate', operator: 'GTE', value: String(since) }] }],\n    sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }], properties: PROPS, limit: 100 } },\n  { key: 'awaiting', body: status('awaiting') },\n  { key: 'replied', body: status('replied') },\n  { key: 'closed', body: status('closed') },\n];\nreturn queries.map(q => ({ json: { mode, now, since, settings: SETTINGS, key: q.key, search_body: q.body } }));\n"
+      },
+      "id": "b10b0799-2fba-4c61-8dd2-1108ca3d8e1f",
+      "name": "Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.search_body) }}",
+        "options": {}
+      },
+      "id": "cb3dcb71-216c-46ea-b6f2-9d307570092e",
+      "name": "HubSpot: 4 searches",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        112
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn the 4 HubSpot answers into numbers, then into the board page or the digest email.\n// Brand: dark teal + saffron (dark mode), white + teal ink + saffron data (light mode). Fonts: DM Serif Display + DM Sans.\nconst Q = $('Queries').all().map(i => i.json);\nconst R = $input.all().map(i => i.json);\nconst { mode, now, settings: S } = Q[0];\nconst got = {}; Q.forEach((q, i) => { got[q.key] = R[i] || {}; });\nconst leads = (got.recent.results || []).map(r => ({ id: r.id, ...r.properties }));\nconst totalRecent = Number(got.recent.total || leads.length);\nconst esc = v => String(v == null ? '' : v).replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst tsOf = v => /^\\d+$/.test(String(v)) ? Number(v) : Date.parse(v);\nconst PKT = 5 * 3600 * 1000;\nconst MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst pkt = ms => {\n  if (!Number.isFinite(Number(ms))) return '—';\n  const d = new Date(Number(ms) + PKT);\n  return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;\n};\nconst clock = h => { const hh = Math.floor(h), mm = String(Math.floor((h - hh) * 60)).padStart(2, '0'); return `${hh % 12 === 0 ? 12 : hh % 12}:${mm} ${hh < 12 ? 'am' : 'pm'}`; };\nconst secs = leads.filter(l => l.first_reply_seconds !== undefined && l.first_reply_seconds !== null && l.first_reply_seconds !== '')\n  .map(l => Number(l.first_reply_seconds)).filter(n => Number.isFinite(n) && n >= 0).sort((a, b) => a - b);\nconst median = secs.length ? (secs.length % 2 ? secs[(secs.length - 1) / 2] : (secs[secs.length / 2 - 1] + secs[secs.length / 2]) / 2) : null;\nconst tiers = { hot: 0, warm: 0, cold: 0 }; leads.forEach(l => { if (tiers[l.lead_tier] !== undefined) tiers[l.lead_tier]++; });\nconst pipe = { awaiting: Number(got.awaiting.total || 0), replied: Number(got.replied.total || 0), closed: Number(got.closed.total || 0) };\nconst answered = pipe.replied + pipe.closed + pipe.awaiting;\nconst replyRate = answered ? Math.round(100 * pipe.replied / answered) : 0;\nconst split = s => s == null ? { num: '—', unit: '' } : s < 60 ? { num: s.toFixed(1), unit: 'sec' } : { num: (s / 60).toFixed(1), unit: 'min' };\nconst fmtSecs = s => { const p = split(s); return p.unit ? `${p.num} ${p.unit}` : p.num; };\nconst windowLabel = mode === 'board' ? 'Last 7 days' : 'Last 24 hours';\nconst capped = totalRecent > leads.length ? `Showing the newest ${leads.length} of ${totalRecent}.` : '';\nconst link = l => S.HUBSPOT_PORTAL_ID ? `https://app.hubspot.com/contacts/${encodeURIComponent(S.HUBSPOT_PORTAL_ID)}/record/0-1/${encodeURIComponent(l.id)}` : '';\nconst nameOf = l => [l.firstname, l.lastname].filter(Boolean).join(' ') || l.email || 'Unknown';\n\n// ---------- Daily digest email (light, email-safe) ----------\nif (mode === 'digest') {\n  const F = \"'DM Sans','Helvetica Neue',Arial,sans-serif\", H = \"'DM Serif Display',Georgia,'Times New Roman',serif\";\n  const hot = leads.filter(l => l.lead_tier === 'hot');\n  const kpi = (v, label) => `<td width=\"25%\" style=\"padding:12px 8px 12px 0;vertical-align:top\"><div style=\"font-family:${H};font-size:30px;line-height:36px;color:#0F2624\">${esc(v)}</div><div style=\"font-family:${F};font-size:14px;line-height:20px;color:#4E6260\">${esc(label)}</div></td>`;\n  const hotRows = hot.slice(0, 15).map(l => {\n    const href = link(l);\n    const nm = href ? `<a href=\"${esc(href)}\" style=\"color:#145A55;text-decoration:underline\">${esc(nameOf(l))}</a>` : esc(nameOf(l));\n    return `<tr><td style=\"padding:12px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624\"><b>${nm}</b><br><span style=\"font-size:14px;color:#4E6260\">${esc(l.city || 'No city')} · score ${esc(l.lead_score || '—')} · ${esc(l.engine_status || '—')}</span></td></tr>`;\n  }).join('') || `<tr><td style=\"padding:12px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;color:#4E6260\">No hot leads in the last 24 hours.</td></tr>`;\n  const html = `<!doctype html><html><body style=\"margin:0;padding:0;background:#F6F8F7\">\n<span style=\"display:none;max-height:0;overflow:hidden\">${totalRecent} new leads, ${tiers.hot} hot, median first reply ${esc(fmtSecs(median))}.</span>\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F6F8F7\"><tr><td align=\"center\" style=\"padding:24px 12px\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;background:#FFFFFF;border:1px solid #DFE6E4;border-radius:12px\">\n<tr><td style=\"height:4px;line-height:4px;font-size:0;background:#E0A21B;border-radius:12px 12px 0 0\">&nbsp;</td></tr>\n<tr><td style=\"padding:24px 32px 0;font-family:${H};font-size:20px;line-height:28px;color:#0F2624\"><span style=\"display:inline-block;width:18px;height:9px;background:#E0A21B;border-radius:9px 9px 0 0;margin-right:8px;vertical-align:middle\"></span>${esc(S.BRAND)}</td></tr>\n<tr><td style=\"padding:16px 32px 0\"><div style=\"font-family:${H};font-size:30px;line-height:38px;color:#0F2624\">Daily leads</div><div style=\"font-family:${F};font-size:14px;line-height:20px;color:#4E6260\">${esc(windowLabel)}, sent ${esc(pkt(now))} PKT. ${esc(capped)}</div></td></tr>\n<tr><td style=\"padding:16px 32px 0\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>${kpi(totalRecent, 'New leads')}${kpi(fmtSecs(median), 'Median first reply')}${kpi(`${tiers.hot}/${tiers.warm}/${tiers.cold}`, 'Hot / warm / cold')}${kpi(`${replyRate}%`, 'Replied')}</tr></table></td></tr>\n<tr><td style=\"padding:8px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260\">Pipeline now: ${pipe.awaiting} awaiting, ${pipe.replied} replied, ${pipe.closed} closed.</td></tr>\n<tr><td style=\"padding:24px 32px 8px\"><div style=\"font-family:${H};font-size:22px;line-height:28px;color:#0F2624\">Hot leads</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">${hotRows}</table></td></tr>\n<tr><td style=\"padding:16px 32px 24px;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260\">Lead Engine daily digest. Demo business; data from HubSpot.</td></tr>\n</table></td></tr></table></body></html>`;\n  return [{ json: { mode, to: S.TEAM_EMAIL, from: `Lead Engine <${S.FROM_EMAIL}>`,\n    subject: `Daily leads: ${totalRecent} new, ${tiers.hot} hot, median reply ${fmtSecs(median)}`, html } }];\n}\n\n// ---------- Board page ----------\nlet theme = '';\ntry { theme = String((($('Board URL (GET)').first().json || {}).query || {}).theme || ''); } catch (e) { theme = ''; }\nif (theme !== 'dark' && theme !== 'light') theme = '';\n\n// Sun arc: one dot per lead, placed by the hour it arrived (PKT), 6 am to 10 pm.\nconst CX = 500, CY = 410, RAD = 370, H0 = 6, H1 = 22;\nconst k = leads.length > 60 ? 1 : 1.5;\nconst pos = (h, r) => { const a = Math.PI * (1 - (h - H0) / (H1 - H0)); return { x: Math.round(CX + r * Math.cos(a)), y: Math.round(CY - r * Math.sin(a)) }; };\nconst dots = leads.map((l, i) => {\n  const t = tsOf(l.createdate);\n  if (!Number.isFinite(t)) return '';\n  const d = new Date(t + PKT);\n  const real = d.getUTCHours() + d.getUTCMinutes() / 60;\n  const h = Math.min(H1, Math.max(H0, real));\n  const tier = ['hot', 'warm', 'cold'].includes(l.lead_tier) ? l.lead_tier : 'cold';\n  const p = pos(h, RAD + ((i % 3) - 1) * 24);\n  const r = (tier === 'hot' ? 7 : tier === 'warm' ? 5.5 : 4) * k;\n  return `<g><title>${esc(nameOf(l))}, ${tier}, arrived ${clock(real)}</title><circle class=\"d-${tier}\" cx=\"${p.x}\" cy=\"${p.y}\" r=\"${r}\"/></g>`;\n}).join('');\nconst ticks = [[6, '6 am'], [10, '10 am'], [14, '2 pm'], [18, '6 pm'], [22, '10 pm']].map(([h, label]) => {\n  const p = pos(h, RAD - 60); return (h === 6 || h === 22) ? `<text x=\"${h === 6 ? 130 : 870}\" y=\"434\" text-anchor=\"middle\">${label}</text>` : `<text x=\"${p.x}\" y=\"${p.y + 6}\" text-anchor=\"middle\">${label}</text>`;\n}).join('');\nconst m = split(median);\nconst tb = (n, cls, first, last) => n ? `<span class=\"${cls}\" style=\"flex:${n};border-radius:${first ? 4 : 0}px ${last ? 4 : 0}px ${last ? 4 : 0}px ${first ? 4 : 0}px\"></span>` : '';\nconst tierBar = (tiers.hot + tiers.warm + tiers.cold)\n  ? `<div class=\"tierbar\">${tb(tiers.hot, 'b-hot', true, !tiers.warm && !tiers.cold)}${tb(tiers.warm, 'b-warm', !tiers.hot, !tiers.cold)}${tb(tiers.cold, 'b-cold', !tiers.hot && !tiers.warm, true)}</div>`\n  : '<div class=\"tierbar\"><span class=\"b-empty\" style=\"flex:1;border-radius:4px\"></span></div>';\nconst STATUS = { replied: ['Replied', 'st-good'], awaiting: ['Awaiting reply', 'st-wait'], closed: ['Closed', 'st-closed'] };\nconst rows = leads.map(l => {\n  const href = link(l);\n  const nm = href ? `<a href=\"${esc(href)}\" target=\"_blank\" rel=\"noopener\">${esc(nameOf(l))}</a>` : esc(nameOf(l));\n  const fr = (l.first_reply_seconds === undefined || l.first_reply_seconds === null || l.first_reply_seconds === '') ? NaN : Number(l.first_reply_seconds);\n  const tier = ['hot', 'warm', 'cold'].includes(l.lead_tier) ? l.lead_tier : '';\n  const st = STATUS[l.engine_status] || [l.engine_status || '—', 'st-closed'];\n  const stage = Math.max(0, Math.min(3, Number(l.followup_stage) || 0));\n  const fu = [1, 2, 3].map(n => `<span class=\"${n <= stage ? 'fu-on' : 'fu-off'}\"></span>`).join('');\n  return `<tr>\n<td class=\"muted nowrap\">${esc(pkt(tsOf(l.createdate)))}</td>\n<td><div class=\"lead\">${nm}</div><div class=\"small muted\">${esc(l.city || 'No city')}</div></td>\n<td class=\"nowrap\">${tier ? `<span class=\"tier\"><span class=\"g g-${tier}\"></span>${tier[0].toUpperCase() + tier.slice(1)}</span> <span class=\"muted\">${esc(l.lead_score || '')}</span>` : '<span class=\"muted\">—</span>'}</td>\n<td class=\"nowrap\">${Number.isFinite(fr) ? esc(fmtSecs(fr)) : '<span class=\"muted\">No email</span>'}</td>\n<td class=\"nowrap\"><span class=\"tier\"><span class=\"sd ${st[1]}\"></span>${esc(st[0])}</span></td>\n<td><span class=\"fu\" aria-label=\"${stage} of 3 follow-ups sent\">${fu}</span></td>\n<td class=\"muted note\">${esc(l.ai_summary || '')}</td></tr>`;\n}).join('') || '<tr><td colspan=\"7\" class=\"empty\">No leads in the last 7 days yet. New form submissions appear here within a minute.</td></tr>';\nconst sunIcon = '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4\"/></svg>';\nconst moonIcon = '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z\"/></svg>';\n\nconst html = `<!doctype html><html lang=\"en\"${theme ? ` data-theme=\"${theme}\"` : ''}><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta http-equiv=\"refresh\" content=\"60\"><title>Speed-to-lead · ${esc(S.BRAND)}</title>\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap\">\n<style>\n:root{--bg:#F6F8F7;--card:#FFFFFF;--ink:#0F2624;--muted:#4E6260;--rule:#DFE6E4;--accent:#145A55;--sun:#E0A21B;--good:#2F7D4F;--hot:#954F00;--warm:#CD7D00;--cold:#E3A257;color-scheme:light}\n@media (prefers-color-scheme:dark){:root:not([data-theme=\"light\"]){--bg:#0F2624;--card:#153231;--ink:#EEF2EF;--muted:#9DB8B3;--rule:#24413F;--accent:#F5AC1F;--sun:#F5AC1F;--good:#5FCB9F;--hot:#F5AC1F;--warm:#B8831C;--cold:#7A5F25;color-scheme:dark}}\n:root[data-theme=\"dark\"]{--bg:#0F2624;--card:#153231;--ink:#EEF2EF;--muted:#9DB8B3;--rule:#24413F;--accent:#F5AC1F;--sun:#F5AC1F;--good:#5FCB9F;--hot:#F5AC1F;--warm:#B8831C;--cold:#7A5F25;color-scheme:dark}\n*{box-sizing:border-box}\nbody{margin:0;background:var(--bg);color:var(--ink);font:400 16px/26px 'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}\na{color:inherit}\n.wrap{max-width:1200px;margin:0 auto;padding:40px 40px 56px;display:flex;flex-direction:column;gap:48px}\n.serif{font-family:'DM Serif Display',Georgia,serif;font-weight:400}\n.muted{color:var(--muted)}.small{font-size:14px;line-height:20px}.nowrap{white-space:nowrap}\nheader{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--rule);padding-bottom:24px}\n.brand{display:flex;align-items:center;gap:12px}\n.brand .name{font-size:25px;line-height:32px}\n.meta{display:flex;align-items:center;gap:16px;text-align:right}\n.toggle{display:flex;border:1px solid var(--rule);border-radius:999px;padding:3px;background:var(--card)}\n.toggle a{width:40px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:999px;color:var(--muted)}\n.toggle a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\n.toggle .t-light{background:var(--bg);color:var(--ink)}\n@media (prefers-color-scheme:dark){:root:not([data-theme=\"light\"]) .toggle .t-light{background:none;color:var(--muted)}:root:not([data-theme=\"light\"]) .toggle .t-dark{background:var(--bg);color:var(--ink)}}\n:root[data-theme=\"dark\"] .toggle .t-light{background:none;color:var(--muted)}:root[data-theme=\"dark\"] .toggle .t-dark{background:var(--bg);color:var(--ink)}\n.hero{position:relative;margin:0}\n.hero svg{display:block;width:100%;height:auto}\n.hero .base{stroke:var(--rule);stroke-width:1.5}\n.hero .path{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:2 8}\n.hero text{fill:var(--muted);font:400 16px 'DM Sans',sans-serif}\n.hero circle{stroke:var(--bg);stroke-width:3}\n.d-hot{fill:var(--hot)}.d-warm{fill:var(--warm)}.d-cold{fill:var(--cold)}\n.center{position:absolute;left:0;right:0;bottom:40px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;pointer-events:none}\n.big{font-size:clamp(56px,9vw,95px);line-height:1;letter-spacing:-.02em}\n.big .unit{font-size:.41em;color:var(--muted);letter-spacing:0}\n.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:24px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:24px 0}\n.kpi .v{font-size:39px;line-height:44px}\n.tierbar{display:flex;height:12px;gap:2px;margin:16px 0 8px}\n.b-hot{background:var(--hot)}.b-warm{background:var(--warm)}.b-cold{background:var(--cold)}.b-empty{background:var(--rule)}\nh2{margin:0;font-size:31px;line-height:38px}\n.tablehead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}\n.tbl{overflow-x:auto;border-top:2px solid var(--ink)}\ntable{width:100%;min-width:900px;border-collapse:collapse}\nth{text-align:left;font-weight:500;font-size:14px;line-height:20px;color:var(--muted);padding:16px}\ntd{padding:16px;border-top:1px solid var(--rule);vertical-align:top}\nth:first-child,td:first-child{padding-left:0}th:last-child,td:last-child{padding-right:0}\n.lead{font-weight:500}.lead a{text-decoration:none;border-bottom:1px solid var(--rule)}.lead a:hover{border-color:var(--ink)}\n.tier{display:inline-flex;align-items:center;gap:8px}\n.g{border-radius:50%;display:inline-block}.g-hot{width:12px;height:12px;background:var(--hot)}.g-warm{width:10px;height:10px;background:var(--warm)}.g-cold{width:8px;height:8px;background:var(--cold)}\n.sd{width:8px;height:8px;border-radius:50%;display:inline-block}.st-good{background:var(--good)}.st-wait{background:var(--accent)}.st-closed{background:var(--rule)}\n.fu{display:inline-flex;gap:4px;padding-top:10px}.fu span{width:16px;height:6px;border-radius:3px}.fu-on{background:var(--ink)}.fu-off{background:var(--rule)}\n.note{max-width:300px}\n.empty{text-align:center;color:var(--muted);padding:40px 0}\nfooter{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border-top:1px solid var(--rule);padding-top:16px;font-size:14px;line-height:20px;color:var(--muted)}\n@media (max-width:640px){.wrap{padding:24px 16px 40px;gap:32px}.meta{text-align:left}.center{position:static;margin-top:16px}.hero text{font-size:30px}.kpi .v{font-size:31px;line-height:38px}}\n</style></head><body><div class=\"wrap\">\n<header>\n<div class=\"brand\"><svg width=\"40\" height=\"40\" viewBox=\"0 0 40 40\" aria-hidden=\"true\"><path d=\"M8 26 A12 12 0 0 1 32 26 Z\" fill=\"var(--sun)\"/><path d=\"M4 26H36\" stroke=\"var(--ink)\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M20 6v4M9 11l2.8 2.8M31 11l-2.8 2.8\" stroke=\"var(--sun)\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>\n<div><div class=\"serif name\">${esc(S.BRAND)}</div><div class=\"small muted\">Speed-to-lead, last 7 days</div></div></div>\n<div class=\"meta\"><div class=\"small muted\">Updated ${esc(pkt(now))} PKT<br>Refreshes every minute</div>\n<nav class=\"toggle\" aria-label=\"Theme\"><a class=\"t-light\" href=\"?theme=light\" aria-label=\"Light theme\" title=\"Light theme\">${sunIcon}</a><a class=\"t-dark\" href=\"?theme=dark\" aria-label=\"Dark theme\" title=\"Dark theme\">${moonIcon}</a></nav></div>\n</header>\n<figure class=\"hero\">\n<svg viewBox=\"0 0 1000 440\" role=\"img\" aria-label=\"Sun arc: each dot is a lead from the last 7 days, placed by the hour it arrived. Larger, darker dots are hotter leads.\">\n<line class=\"base\" x1=\"40\" y1=\"410\" x2=\"960\" y2=\"410\"/><path class=\"path\" d=\"M 130 410 A 370 370 0 0 1 870 410\"/>${ticks}${dots}\n</svg>\n<figcaption class=\"center\"><span class=\"muted\">Median first reply</span><span class=\"serif big\">${esc(m.num)}${m.unit ? `<span class=\"unit\"> ${m.unit}</span>` : ''}</span><span class=\"small muted\">${secs.length ? `From form sent to first email, ${secs.length} leads. Each dot is a lead, placed by the hour it arrived.` : 'No first replies yet in this window.'}</span></figcaption>\n</figure>\n<section class=\"kpis\" aria-label=\"Summary\">\n<div class=\"kpi\"><div class=\"serif v\">${totalRecent}</div><div class=\"small muted\">New leads</div></div>\n<div class=\"kpi\"><div class=\"serif v\">${replyRate}%</div><div class=\"small muted\">Replied, ${pipe.replied} people</div></div>\n<div class=\"kpi\"><div class=\"serif v\">${pipe.awaiting}</div><div class=\"small muted\">Awaiting reply, ${pipe.closed} closed</div></div>\n<div class=\"kpi\">${tierBar}<div class=\"small muted\">${tiers.hot} hot, ${tiers.warm} warm, ${tiers.cold} cold</div></div>\n</section>\n<section style=\"display:flex;flex-direction:column;gap:16px\">\n<div class=\"tablehead\"><h2 class=\"serif\">All leads</h2><span class=\"small muted\">Newest first.${S.HUBSPOT_PORTAL_ID ? ' Click a name to open it in HubSpot.' : ''} ${esc(capped)}</span></div>\n<div class=\"tbl\"><table><thead><tr><th>Arrived (PKT)</th><th>Lead</th><th>Tier</th><th>First reply</th><th>Status</th><th>Follow-ups</th><th>AI note</th></tr></thead>\n<tbody>${rows}</tbody></table></div>\n</section>\n<footer><span>Demo business. Data from HubSpot.</span><span>Lead Engine</span></footer>\n</div></body></html>`;\nreturn [{ json: { mode, html } }];\n"
+      },
+      "id": "8bf3bdba-7837-4dbf-aa78-468788e1ba9b",
+      "name": "Build page / email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4122fb2c-f8d2-4708-9c51-004ba6b3e743",
+              "leftValue": "={{ $json.mode }}",
+              "rightValue": "board",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3a133240-0ea1-486b-9f21-f9ce9faa4210",
+      "name": "Board?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ccd9b51d-9005-40a4-9cb6-21a1eac9da5f",
+      "name": "Show board",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "62c1df0b-ef90-4e23-946a-44542531de4d",
+      "name": "Send digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        208
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "webhookId": "4fc8d561-04d4-4ab9-bb58-0547127d3f57"
+    }
+  ],
+  "connections": {
+    "Board URL (GET)": {
+      "main": [
+        [
+          {
+            "node": "Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every day 8 AM": {
+      "main": [
+        [
+          {
+            "node": "Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send digest now (test)": {
+      "main": [
+        [
+          {
+            "node": "Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queries": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: 4 searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot: 4 searches": {
+      "main": [
+        [
+          {
+            "node": "Build page / email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build page / email": {
+      "main": [
+        [
+          {
+            "node": "Board?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Board?": {
+      "main": [
+        [
+          {
+            "node": "Show board",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

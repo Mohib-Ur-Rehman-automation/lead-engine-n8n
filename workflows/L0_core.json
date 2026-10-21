@@ -1,0 +1,546 @@
+{
+  "name": "L0 Core (Lead Engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "b9b51bca-b09a-4964-8ed8-744d49807997",
+      "name": "L0 Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4b17a7e4-fc04-490b-818f-7d86f9285637",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "crm_upsert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "crm_upsert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "87c7f357-42c5-492a-8911-77566407b428",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "crm_update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "crm_update"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fb5ba68a-210b-4bb6-9f5d-9c3f813ffc10",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "log",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "log"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "rules"
+        }
+      },
+      "id": "58499b56-d25b-47ce-baa0-52596c0197ad",
+      "name": "Route by action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build one HubSpot upsert per lead.\n// Email leads are matched BY EMAIL, so a contact that already existed in HubSpot (added by hand, imported,\n// from another form) is updated instead of HubSpot refusing a 2nd contact with the same email.\n// Phone-only leads are matched by the unique lead_key (\"tel:...\").\n// Only non-empty values are sent, so a duplicate submission never blanks out existing data.\nconst out = [];\nfor (const item of $input.all()) {\n  const r = item.json.data;\n  if (!r || r.ok !== true || !r.dedupe_key) {\n    throw new Error('L0 crm_upsert: data must be an ok result from action \"process\" (or \"ai_adjust\")');\n  }\n  const L = r.lead || {};\n  const parts = String(L.name || '').split(' ');\n  const props = {\n    email: L.email,\n    firstname: parts[0],\n    lastname: parts.slice(1).join(' '),\n    phone: L.phone ? '+' + L.phone : '',\n    city: L.city,\n    lead_score: r.score,\n    lead_tier: r.tier,\n    score_reasons: (r.reasons || []).join('; '),\n    ai_summary: r.ai_summary,\n    lead_key: L.email ? r.dedupe_key : undefined,   // email leads: also store the key; phone-only: it's the id below\n  };\n  for (const k of Object.keys(props)) {\n    const v = props[k];\n    if (v === undefined || v === null || v === '') delete props[k];\n    else props[k] = String(v);\n  }\n  out.push({ json: {\n    lead_key: r.dedupe_key, tier: r.tier, score: r.score,\n    hs_body: { inputs: [L.email\n      ? { idProperty: 'email', id: L.email, properties: props }\n      : { idProperty: 'lead_key', id: r.dedupe_key, properties: props }] },\n  } });\n}\nreturn out;\n"
+      },
+      "id": "25478482-a1c4-40b8-82c5-40da8fbaf118",
+      "name": "CRM: build upsert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/batch/upsert",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.hs_body) }}",
+        "options": {}
+      },
+      "id": "f2ef5a3a-2613-484e-a537-e9795819793f",
+      "name": "HubSpot: upsert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        112
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn HubSpot's upsert reply into a small, predictable result.\n// New contacts also get their starting follow-up state (set in the next step).\nconst built = $('CRM: build upsert').all();\nreturn $input.all().map((it, i) => {\n  const res = (it.json.results || [])[0] || {};\n  if (!res.id) throw new Error('L0 crm_upsert: HubSpot returned no contact id: ' + JSON.stringify(it.json).slice(0, 300));\n  const b = built[i] ? built[i].json : {};\n  return { json: {\n    ok: true,\n    contact_id: String(res.id),\n    is_new: res.new === true,\n    lead_key: b.lead_key,\n    tier: b.tier,\n    score: b.score,\n    init_props: {\n      engine_status: 'awaiting',\n      followup_stage: '0',\n      next_followup_at: String(Date.now() + 24 * 3600 * 1000),\n    },\n  } };\n});\n"
+      },
+      "id": "aa8f988a-ae94-4355-bf11-817e79d52a07",
+      "name": "CRM: shape result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ec2f7e4f-a852-4631-83b0-f198d83ffe14",
+              "leftValue": "={{ $json.is_new }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "85cea5e9-84da-4462-8124-69f04fd65dd1",
+      "name": "New contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/contacts/{{ $json.contact_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: $json.init_props }) }}",
+        "options": {}
+      },
+      "id": "fafab662-fb24-4385-8f47-7f856163e293",
+      "name": "HubSpot: set start state",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Always return one clean result per contact (new or existing) on the main output.\nreturn $input.all().map((it, i) => {\n  const r = { ...$('CRM: shape result').itemMatching(i).json };\n  delete r.init_props;\n  return { json: r };\n});"
+      },
+      "id": "99c23d18-19d9-4a37-9471-eb34290fe9ec",
+      "name": "CRM: new contact done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generic contact update, used by L1/L2/L3. Only these fields may change, with checked values.\nconst ENUM = { engine_status: ['awaiting', 'replied', 'closed'] };\nconst out = [];\nfor (const item of $input.all()) {\n  const d = item.json.data || {};\n  const id = String(d.contact_id || '');\n  if (!/^\\d+$/.test(id)) throw new Error('L0 crm_update: contact_id must be a HubSpot numeric id, got \"' + id + '\"');\n  const p = d.properties || {};\n  const props = {};\n  for (const k of Object.keys(p)) {\n    const v = p[k];\n    if (k === 'engine_status') {\n      if (!ENUM.engine_status.includes(v)) throw new Error('L0 crm_update: bad engine_status \"' + v + '\"');\n      props[k] = v;\n    } else if (k === 'followup_stage') {\n      const n = Number(v);\n      if (!Number.isInteger(n) || n < 0 || n > 3) throw new Error('L0 crm_update: followup_stage must be 0-3');\n      props[k] = String(n);\n    } else if (k === 'first_reply_seconds') {\n      const n = Number(v);\n      if (!Number.isFinite(n) || n < 0) throw new Error('L0 crm_update: first_reply_seconds must be >= 0');\n      props[k] = String(Math.round(n));\n    } else if (k === 'next_followup_at') {\n      const ms = typeof v === 'number' ? v : (/^\\d+$/.test(String(v)) ? Number(v) : Date.parse(v));\n      if (!Number.isFinite(ms)) throw new Error('L0 crm_update: next_followup_at is not a date');\n      props[k] = String(ms);\n    } else if (k === 'ai_summary') {\n      props[k] = String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\\s+/g, ' ').trim().slice(0, 160);\n    } else {\n      throw new Error('L0 crm_update: field \"' + k + '\" is not allowed');\n    }\n  }\n  if (!Object.keys(props).length) throw new Error('L0 crm_update: nothing to update');\n  out.push({ json: { contact_id: id, hs_body: { properties: props } } });\n}\nreturn out;\n"
+      },
+      "id": "9178cee6-bdce-497f-878b-88974d03c8ac",
+      "name": "CRM: build update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/contacts/{{ $json.contact_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.hs_body) }}",
+        "options": {}
+      },
+      "id": "43480c86-af70-4895-98e9-1e0c88094a92",
+      "name": "HubSpot: update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shape a log row for one Sheet tab. Only known columns, plain text, max 500 chars each.\n// The Sheets node writes in RAW mode, so text like =HYPERLINK(...) is stored as text, never run.\nconst COLS = {\n  Events: ['idempotency_key', 'dedupe_key', 'event', 'ts'],\n  Rejects: ['ts', 'errors', 'name', 'email', 'phone', 'test_id'],\n  TestReport: ['run_ts', 'test_id', 'expect', 'got', 'pass', 'detail'],\n};\nconst items = $input.all();\nconst tab = items[0].json.data && items[0].json.data.tab;\nif (!COLS[tab]) throw new Error('L0 log: data.tab must be Events, Rejects or TestReport');\nconst now = new Date().toISOString();\nreturn items.map(it => {\n  const d = it.json.data || {};\n  if (d.tab !== tab) throw new Error('L0 log: one call can only write to one tab');\n  const src = d.row || {};\n  const row = {};\n  for (const c of COLS[tab]) {\n    let v = src[c];\n    if ((c === 'ts' || c === 'run_ts') && (v === undefined || v === '')) v = now;\n    if (Array.isArray(v)) v = v.join(', ');\n    row[c] = v === undefined || v === null ? '' : String(v).slice(0, 500);\n  }\n  return { json: row };\n});\n"
+      },
+      "id": "d7dadb14-72bb-41e6-b3c0-3020cdec7e7c",
+      "name": "Log: shape",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('L0 Input').first().json.data.tab }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "cce19ad3-21db-4591-b575-de7bf1f18f64",
+      "name": "Sheets: append row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        544
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// L0 Rules: the ONLY place lead rules live.\n// Actions handled here: \"process\" (validate + score) and \"ai_adjust\" (clamp the AI's opinion).\n// Pure code: no network, no AI. The AI can only nudge the score through applyAiAdjust().\n\nconst RULES = {\n  version: '1.1',\n  tiers: { hot: 70, warm: 40 },          // score >= 70 hot, >= 40 warm, else cold\n  aiMaxAdjust: 10,                       // AI may move the score by at most ±10\n  maxField: { name: 80, email: 120, phone: 20, city: 60, message: 1000 },\n};\n\n// Plain text only: objects/arrays become '', control + invisible/bidi characters are removed,\n// and text is cut by whole characters so an emoji is never split in half.\nconst INVISIBLE = /[\\u0000-\\u001F\\u007F\\u200B-\\u200F\\u2028-\\u202E\\u2060-\\u2064\\u2066-\\u2069\\uFEFF]/g;\nfunction clean(s, max) {\n  if (s === null || s === undefined || typeof s === 'object' || typeof s === 'function') return '';\n  return Array.from(String(s).replace(INVISIBLE, ' ').replace(/\\s+/g, ' ').trim()).slice(0, max).join('').trim();\n}\n\nfunction normEmail(e) {\n  const v = clean(e, RULES.maxField.email).toLowerCase();\n  // local part: no leading/trailing/double dots; domain: real labels (letters, digits, inner hyphens) + a letter TLD\n  return /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$/.test(v) ? v : '';\n}\n\n// Pakistani + international numbers -> digits with country code. 03xx... -> 923xx...\nfunction normPhone(p) {\n  let d = clean(p, 40).replace(/[^\\d+]/g, '');\n  if (d.startsWith('+')) d = d.slice(1);\n  if (d.startsWith('00')) d = d.slice(2);\n  if (/^03\\d{9}$/.test(d)) d = '92' + d.slice(1);   // valid PK mobile, local format\n  else if (d.startsWith('0')) return '';             // any other local-format number is a typo\n  return d.length >= 10 && d.length <= 15 ? d : '';\n}\n\nfunction fnv1a(str) {               // stable short hash for idempotency keys\n  let h = 0x811c9dc5;\n  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\n  return h.toString(16).padStart(8, '0');\n}\n\n// Monthly bill bands sized for Pakistan 2026 (most rooftop-solar buyers pay Rs 25k+; 10 kW systems target ~Rs 50k+ bills).\nconst BILL = { 'under_10k': 0, '10k_25k': 10, '25k_50k': 20, '50k_100k': 30, 'over_100k': 35 };\nconst TIMELINE = { 'now': 30, '1_3_months': 20, '3_6_months': 10, 'researching': 0 };\nconst PROPERTY = { 'house': 15, 'business': 15, 'apartment': 0 };\nconst OWNER = { 'owner': 15, 'renter': -20 };\n// Only the listed answers score points. Own-property check, so values like \"__proto__\" or \"toString\" score 0.\nconst pts = (map, k) => Object.prototype.hasOwnProperty.call(map, k) ? map[k] : 0;\n\nfunction ruleScore(l) {\n  const reasons = [];\n  let s = 0;\n  const add = (pts, why) => { s += pts; if (pts) reasons.push(`${pts > 0 ? '+' : ''}${pts} ${why}`); };\n  add(pts(BILL, l.monthly_bill), `bill ${l.monthly_bill || 'unknown'}`);\n  add(pts(TIMELINE, l.timeline), `timeline ${l.timeline || 'unknown'}`);\n  add(pts(PROPERTY, l.property_type), `property ${l.property_type || 'unknown'}`);\n  add(pts(OWNER, l.ownership), `ownership ${l.ownership || 'unknown'}`);\n  if (l.phone && l.email) add(5, 'both contacts');\n  return { score: Math.max(0, Math.min(100, s)), reasons };\n}\n\nfunction tierOf(score) {\n  return score >= RULES.tiers.hot ? 'hot' : score >= RULES.tiers.warm ? 'warm' : 'cold';\n}\n\n// Main entry: raw form payload -> normalized lead or rejection.\nfunction processLead(raw) {\n  const r = raw || {};\n  const lead = {\n    name: clean(r.name, RULES.maxField.name),\n    email: normEmail(r.email),\n    phone: normPhone(r.phone),\n    city: clean(r.city, RULES.maxField.city),\n    monthly_bill: clean(r.monthly_bill, 20).toLowerCase(),\n    timeline: clean(r.timeline, 20).toLowerCase(),\n    property_type: clean(r.property_type, 20).toLowerCase(),\n    ownership: clean(r.ownership, 20).toLowerCase(),\n    message: clean(r.message, RULES.maxField.message),\n    honeypot: clean(r.website, 200),            // hidden field; bots fill it\n  };\n  const errors = [];\n  if (lead.honeypot) errors.push('spam_honeypot');\n  if (!lead.name) errors.push('missing_name');\n  if (!lead.email && !lead.phone) errors.push('no_valid_contact');\n  if (errors.length) return { ok: false, errors, lead };\n\n  const dedupe_key = lead.email || ('tel:' + lead.phone);\n  const idempotency_key = fnv1a([lead.email, lead.phone, lead.message, lead.timeline].join('|'));\n  const { score, reasons } = ruleScore(lead);\n  delete lead.honeypot;\n  return { ok: true, lead, dedupe_key, idempotency_key, rule_score: score, score, tier: tierOf(score),\n           reasons, rules_version: RULES.version };\n}\n\n// AI layer contract: AI returns {adjust:int, summary:string}. Code clamps it; AI never sets the tier directly.\nfunction applyAiAdjust(result, ai) {\n  if (!result || !result.ok || !Number.isFinite(result.rule_score)) return result;\n  let adj = Number.parseInt(ai && ai.adjust, 10);\n  if (!Number.isFinite(adj)) adj = 0;\n  adj = Math.max(-RULES.aiMaxAdjust, Math.min(RULES.aiMaxAdjust, adj));\n  const summary = clean(ai && ai.summary, 160).replace(/[<>]/g, '');\n  const score = Math.max(0, Math.min(100, result.rule_score + adj));\n  return { ...result, ai_adjust: adj, ai_summary: summary, score, tier: tierOf(score),\n           reasons: [...result.reasons, adj ? `${adj > 0 ? '+' : ''}${adj} ai` : 'ai 0'] };\n}\n\n// AI output may arrive as an object or as raw model text. Anything unreadable -> {} -> adjust 0.\nfunction parseAi(ai) {\n  if (ai && typeof ai === 'object') return ai;\n  if (typeof ai !== 'string') return {};\n  const m = ai.match(/\\{[\\s\\S]*\\}/);\n  if (!m) return {};\n  try { return JSON.parse(m[0]); } catch (e) { return {}; }\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const action = item.json.action;\n  const data = item.json.data;\n  if (action === 'process') {\n    const r = processLead(data);\n    if (data && (data._id || data._expect)) r.test = { id: String(data._id || ''), expect: String(data._expect || '') };\n    out.push({ json: r });\n  } else if (action === 'ai_adjust') {\n    const result = data && data.result;\n    if (!result || typeof result !== 'object') throw new Error('L0 ai_adjust: data.result is missing');\n    out.push({ json: applyAiAdjust(result, parseAi(data.ai)) });\n  } else {\n    throw new Error('L0: unknown action \"' + action + '\". Use process, ai_adjust, crm_upsert, crm_update or log.');\n  }\n}\nreturn out;\n"
+      },
+      "id": "211d2b21-3b8a-4033-9b90-6b55c0021ef4",
+      "name": "Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## L0 Core: the only place rules live\nEvery L workflow calls this with `{ action, data }`.\n\n- `process` · validate, normalise, score\n- `ai_adjust` · clamp AI to ±10, recompute tier\n- `crm_upsert` · HubSpot upsert on unique `lead_key`\n- `crm_update` · whitelisted fields only\n- `log` · one row to a Sheet tab (RAW mode)",
+        "height": 248,
+        "width": 460,
+        "color": 7
+      },
+      "id": "599e8436-7d14-462e-85b7-6860e75f8586",
+      "name": "Note 2dd99c",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## crm_upsert\nOne HubSpot call per lead. Empty values are never sent, so a repeat can't blank existing data.\n**New** contacts also get `engine_status=awaiting`, `followup_stage=0`, follow-up due in 24 h.",
+        "height": 144,
+        "width": 664,
+        "color": 4
+      },
+      "id": "10afc081-02cc-4d51-9d68-d86683799c79",
+      "name": "Note 77e227",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        592,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## crm_update\nUsed by L1/L2/L3. Only these fields may change: `engine_status`, `followup_stage`, `next_followup_at`, `first_reply_seconds`, `ai_summary`. Bad values throw an error (→ e0).",
+        "height": 150,
+        "width": 480,
+        "color": 3
+      },
+      "id": "b0e372e3-859f-4ba9-85b6-a0b58b70305b",
+      "name": "Note c11538",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## log\nKnown columns only, max 500 chars each. RAW mode stores `=HYPERLINK(...)` as text, never as a formula.",
+        "height": 156,
+        "width": 480,
+        "color": 5
+      },
+      "id": "b48d02f2-5d0f-46e8-b17f-aaacf901e4e3",
+      "name": "Note 3f7784",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        992,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Rules (process + ai_adjust)\nPure code: no network, no AI.\nTiers: hot ≥ 70 · warm ≥ 40 · else cold.\nAI text is parsed defensively; anything unreadable → adjust 0.",
+        "height": 164,
+        "width": 480,
+        "color": 6
+      },
+      "id": "8300cc47-f1db-454b-ae86-cc89a99aaf44",
+      "name": "Note c64066",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        -48
+      ]
+    }
+  ],
+  "connections": {
+    "L0 Input": {
+      "main": [
+        [
+          {
+            "node": "Route by action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by action": {
+      "main": [
+        [
+          {
+            "node": "CRM: build upsert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM: build update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log: shape",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: build upsert": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot: upsert": {
+      "main": [
+        [
+          {
+            "node": "CRM: shape result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: shape result": {
+      "main": [
+        [
+          {
+            "node": "New contact?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New contact?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: set start state",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM: new contact done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot: set start state": {
+      "main": [
+        [
+          {
+            "node": "CRM: new contact done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: build update": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log: shape": {
+      "main": [
+        [
+          {
+            "node": "Sheets: append row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "name": "L3 Reply detector (Lead Engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## L3 · Reply detector\nWatches the inbox over **IMAP**. An email counts as a lead reply if it's **not from the system address**, or it's a **Re:** reply (the system never sends Re: subjects). So our own follow-ups and alerts landing here are ignored.\n\nQuoted text (\"On … wrote:\", lines starting with >) is stripped before it's shown.",
+        "height": 300,
+        "width": 640,
+        "color": 7
+      },
+      "id": "53912598-4dd8-4b78-9021-48d7a1e14d07",
+      "name": "Note 2bb408",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Match → stop follow-ups → alert\nLooks the sender up in HubSpot by `lead_key`. Unknown senders are ignored.\nA lead's **first** reply sets `engine_status = replied` (L2 stops emailing them), logs `replied` in **Events**, and emails the team. Later replies from the same lead don't re-alert.",
+        "height": 300,
+        "width": 1240,
+        "color": 4
+      },
+      "id": "ad4bb15c-2aa2-401b-8dae-b08523d8b3b6",
+      "name": "Note 947622",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "forceReconnect": 1
+        }
+      },
+      "id": "e7fee2e0-df44-4da8-850f-8bba603b1eb6",
+      "name": "New email (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SETTINGS: edit once =====\nconst SETTINGS = {\n  L0_ID: 'PASTE_L0_WORKFLOW_ID',\n  FROM_EMAIL: 'you@example.com',     // the system's own address\n  TEAM_EMAIL: 'you@example.com',\n  HUBSPOT_PORTAL_ID: '',                   // optional, adds an \"Open in HubSpot\" link\n};\n// ===============================\n// Which emails count as a lead reply?\n//  - anything NOT sent by the system address, or\n//  - a \"Re:\" reply (the system itself never sends \"Re:\" subjects)\n// So the system's own alerts and follow-ups landing in this inbox are ignored.\nfunction addressOf(v) {\n  if (!v) return '';\n  if (typeof v === 'object') {\n    const a = (v.value && v.value[0] && v.value[0].address) || v.address || v.text || '';\n    return addressOf(a);\n  }\n  const m = String(v).match(/<([^>]+)>/);\n  return (m ? m[1] : String(v)).trim().toLowerCase();\n}\n// Machine-sent mail is never a lead reply: out-of-office, auto-replies, bounces, no-reply senders.\nconst AUTO_SUBJECT = /^\\s*(automatic reply|auto[- ]?reply|autoreply|auto( |-)?response|auto:|out of (the )?office|ooo\\b|on vacation|away from|undeliverable|undelivered|delivery (status notification|failure|has failed)|mail delivery (failed|subsystem)|returned mail|failure notice)/i;\nconst AUTO_SENDER = /^(mailer-daemon|postmaster|no-?reply|do-?not-?reply|bounces?|auto-?reply)([+.@-]|$)/i;\nfunction cleanBody(t) {\n  // HTML-only emails: drop tags, keep text\n  t = String(t || '').replace(/<(br|\\/p|\\/div)\\s*\\/?>/gi, '\\n').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');\n  // cut at the quoted thread, even when Gmail wraps \"On ... wrote:\" over two lines\n  const cut = t.search(/(^|\\n)\\s*On [^\\n]*(\\n[^\\n]*)?wrote:/);\n  if (cut >= 0) t = t.slice(0, cut);\n  const lines = t.split(/\\r?\\n/);\n  const keep = [];\n  for (const l of lines) {\n    if (/^On .+wrote:\\s*$/i.test(l.trim()) || /^-{2,}\\s*Original Message/i.test(l.trim())) break;\n    if (l.trim().startsWith('>')) continue;\n    keep.push(l);\n  }\n  return keep.join(' ').replace(/\\s+/g, ' ').trim().slice(0, 300);\n}\nconst own = SETTINGS.FROM_EMAIL.toLowerCase();\nconst out = [];\nfor (const it of $input.all()) {\n  const j = it.json || {};\n  const from = addressOf(j.from || (j.metadata && j.metadata.from));\n  const subject = String(j.subject || '').trim();\n  const isRe = /^(re|aw|sv)\\s*:/i.test(subject);\n  if (!from || !/@/.test(from)) continue;\n  if (from === own && !isRe) continue;               // the system's own mail\n  if (/^\\[(HOT|REPLY)\\b/i.test(subject)) continue;   // our alerts, even if forwarded\n  if (AUTO_SUBJECT.test(subject) || AUTO_SENDER.test(from)) continue;   // machines, not people (marker comes first)   // machines, not people\n  out.push({ json: {\n    settings: SETTINGS, from, subject: subject.slice(0, 200),\n    snippet: cleanBody(j.textPlain || j.text || j.textHtml || j.html),\n    search_body: {\n      filterGroups: [{ filters: [{ propertyName: 'lead_key', operator: 'EQ', value: from }] }],\n      properties: ['firstname', 'lastname', 'phone', 'city', 'lead_tier', 'lead_score', 'engine_status', 'followup_stage'],\n      limit: 1,\n    },\n  } });\n}\nreturn out;\n"
+      },
+      "id": "d1857d50-0470-4936-8c34-e166f49eba90",
+      "name": "Settings & parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.search_body) }}",
+        "options": {}
+      },
+      "id": "48c13aaf-0f89-42aa-a246-2d3ea835f7a1",
+      "name": "HubSpot: find lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -416,
+        176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep only senders who are leads in HubSpot and haven't been marked replied yet.\n// (Already-replied leads don't trigger a second alert.)\nconst parsed = $('Settings & parse').all();\nconst out = [];\nconst done = new Set();   // two emails from the same lead in one check -> one update, one alert\n$input.all().forEach((it, i) => {\n  const c = (it.json.results || [])[0];\n  const p = parsed[i] && parsed[i].json;\n  if (!c || !p) return;\n  const props = c.properties || {};\n  if (props.engine_status === 'replied' || done.has(String(c.id))) return;\n  done.add(String(c.id));\n  out.push({ json: {\n    action: 'crm_update',\n    data: { contact_id: String(c.id), properties: { engine_status: 'replied' } },\n    contact_id: String(c.id), from: p.from, subject: p.subject, snippet: p.snippet,\n    name: [props.firstname, props.lastname].filter(Boolean).join(' ') || p.from,\n    phone: props.phone || '', city: props.city || '', tier: props.lead_tier || '', score: props.lead_score || '',\n    stage: props.followup_stage || '0', settings: p.settings,\n  } });\n});\nreturn out;\n"
+      },
+      "id": "cccb5a63-b2db-4a0a-b09d-8fd9d0f95bf7",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('Settings & parse').first().json.settings.L0_ID }}",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "d170f4d3-087b-4388-85b9-f0d33bf54426",
+      "name": "L0: mark replied",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One Events row per reply detected.\nreturn $('Decide').all().map(i => ({ json: { action: 'log', data: { tab: 'Events', row: {\n  idempotency_key: '', dedupe_key: i.json.from, event: 'replied',\n} } } }));\n"
+      },
+      "id": "2a9b2c73-ec63-4acc-8fcd-e8d986d18090",
+      "name": "Log rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('Settings & parse').first().json.settings.L0_ID }}",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9d9315cb-ccc1-46e4-9af1-52b0478211d9",
+      "name": "L0: log reply",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tell the team a lead replied (follow-ups for them have already stopped).\nconst esc = v => String(v == null ? '' : v).replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst F = \"'DM Sans','Helvetica Neue',Arial,sans-serif\", H = \"'DM Serif Display',Georgia,'Times New Roman',serif\";\nreturn $('Decide').all().map(({ json: d }) => {\n  const s = d.settings;\n  const href = s.HUBSPOT_PORTAL_ID ? `https://app.hubspot.com/contacts/${encodeURIComponent(s.HUBSPOT_PORTAL_ID)}/record/0-1/${encodeURIComponent(d.contact_id)}` : '';\n  const btn = href ? `<a href=\"${esc(href)}\" style=\"display:inline-block;padding:12px 20px;border-radius:8px;background:#145A55;color:#FFFFFF;font-family:${F};font-size:16px;line-height:20px;font-weight:700;text-decoration:none\">Open in HubSpot</a>` : '';\n  const tierBadge = d.tier ? `<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;background:${d.tier === 'hot' ? '#E0A21B' : '#EEF4F2'};color:#0F2624;font-weight:700;margin-right:8px\">${esc(d.tier[0].toUpperCase() + d.tier.slice(1))} ${esc(d.score)}</span>` : '';\n  const rows = [['From', d.from], ['Phone', d.phone || '—'], ['City', d.city || '—'], ['Follow-ups sent', `${d.stage} of 3`], ['Subject', d.subject]]\n    .map(([k, v]) => `<tr><td style=\"padding:8px 16px 8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260;vertical-align:top;white-space:nowrap\">${k}</td><td style=\"padding:8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624\">${esc(v)}</td></tr>`).join('');\n  const html = `<!doctype html><html><body style=\"margin:0;padding:0;background:#F6F8F7\">\n<span style=\"display:none;max-height:0;overflow:hidden\">Follow-ups are stopped. Take it from here.</span>\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F6F8F7\"><tr><td align=\"center\" style=\"padding:24px 12px\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;background:#FFFFFF;border:1px solid #DFE6E4;border-radius:12px\">\n<tr><td style=\"height:4px;line-height:4px;font-size:0;background:#145A55;border-radius:12px 12px 0 0\">&nbsp;</td></tr>\n<tr><td style=\"padding:24px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260\">${tierBadge}Lead Engine, ${esc(s.BRAND)}</td></tr>\n<tr><td style=\"padding:16px 32px 0;font-family:${H};font-size:28px;line-height:36px;color:#0F2624\">${esc(d.name)} replied</td></tr>\n<tr><td style=\"padding:8px 32px 16px;font-family:${F};font-size:16px;line-height:26px;color:#0F2624\">Automatic follow-ups are stopped. Take it from here.</td></tr>\n<tr><td style=\"padding:0 32px 16px\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#EEF4F2;border-radius:8px\"><tr><td style=\"padding:16px 20px;font-family:${F};font-size:16px;line-height:26px;color:#0F2624\"><div style=\"font-size:14px;line-height:20px;font-weight:700;margin-bottom:4px\">They wrote</div>${esc(d.snippet || '(no text)')}</td></tr></table></td></tr>\n<tr><td style=\"padding:0 32px 8px\">${btn}</td></tr>\n<tr><td style=\"padding:8px 32px 24px\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">${rows}</table></td></tr>\n</table></td></tr></table></body></html>`;\n  return { json: {\n    to: s.TEAM_EMAIL, from: `Lead Engine <${s.FROM_EMAIL}>`,\n    subject: `[REPLY] ${d.name} replied: follow-ups stopped`,\n    html,\n  } };\n});\n"
+      },
+      "id": "dc1c095f-ae50-4de1-9830-42461d385e7b",
+      "name": "Plan alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "62246615-2619-4e69-9abf-74a0e256a67d",
+      "name": "Send reply alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "webhookId": "395060e8-a17b-4911-a930-04454233cf9c"
+    }
+  ],
+  "connections": {
+    "New email (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Settings & parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings & parse": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: find lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot: find lead": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "L0: mark replied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L0: mark replied": {
+      "main": [
+        [
+          {
+            "node": "Log rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log rows": {
+      "main": [
+        [
+          {
+            "node": "L0: log reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L0: log reply": {
+      "main": [
+        [
+          {
+            "node": "Plan alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan alert": {
+      "main": [
+        [
+          {
+            "node": "Send reply alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}
