@@ -51,7 +51,11 @@ for (const r of ($input.first().json.results || []).slice(0, s.settings.MAX_PER_
     ? { followup_stage: n, next_followup_at: now + WAIT_AFTER[n] }
     : { followup_stage: 3, engine_status: 'closed' };
   const first = String(pr.firstname || '').trim() || 'there';
-  const t = TEMPLATES[n](first, pr.city);
+  // Same echo rule as L0: name/city typed into a public form never become links in our emails.
+  const unglue = v => String(v || '').replace(/\.(?=\p{L})/gu, '. ');
+  const city = unglue(pr.city);
+  const safeCity = /^[\p{L}\p{M}][\p{L}\p{M} .,'-]*$/u.test(city) && city.split(' ').filter(Boolean).length <= 4 && city.length <= 40 ? city : '';
+  const t = TEMPLATES[n](unglue(first), safeCity);
   out.push({ json: {
     action: 'crm_update',
     data: { contact_id: String(r.id), properties: props },

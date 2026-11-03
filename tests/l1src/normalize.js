@@ -5,6 +5,7 @@ const SETTINGS = {
   FROM_EMAIL: 'PASTE_YOUR_SMTP_EMAIL',      // the Gmail your SMTP credential sends from
   TEAM_EMAIL: 'PASTE_TEAM_ALERT_EMAIL',     // where hot-lead alerts go (can be the same Gmail)
   HUBSPOT_PORTAL_ID: '',                    // optional: the number in your HubSpot URL, adds a link to alerts
+  MAX_REPLIES_PER_HOUR: 20,                 // safety cap: instant replies per hour; above it, leads are saved but not emailed
 };
 // =================================================
 
@@ -21,7 +22,7 @@ const OPTIONS = {
   'House': 'house', 'Business': 'business', 'Apartment': 'apartment',
   'Yes, I own it': 'owner', 'No, I rent': 'renter',
 };
-const KEYS = ['name', 'email', 'phone', 'city', 'monthly_bill', 'timeline', 'property_type', 'ownership', 'message', 'website', '_id'];
+const KEYS = ['name', 'email', 'phone', 'city', 'monthly_bill', 'timeline', 'property_type', 'ownership', 'message', 'website'];   // '_id' is for L5 tests only, never from the public
 
 const it = $input.first().json;
 let src = {}, source;

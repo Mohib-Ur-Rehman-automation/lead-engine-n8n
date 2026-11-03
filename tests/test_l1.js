@@ -60,7 +60,7 @@ leads.forEach((l, i) => {
   const r = submit(trigger, AI[i % 4], i % 7 === 0);
   const e = l._expect;
   if (e.startsWith('reject_')) { ok(r.rejected, 'reject ' + l._id); rejected++;
-    if (!viaForm) ok(r.row.data.row.test_id === l._id, 'test id in reject row'); return; }
+    ok(r.row.data.row.test_id === '', 'public input cannot set the test id'); return; }
   if (e === 'dedupe_update') { ok(r.duplicate, 'exact repeat ignored ' + l._id); dup++; return; }
   ok(!r.rejected && !r.duplicate, 'accepted ' + l._id); acc++;
   ok(Math.abs(r.final.score - r.p.rule_score) <= 10, 'clamp');

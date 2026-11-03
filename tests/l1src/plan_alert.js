@@ -11,7 +11,7 @@ const btn = (url, label, solid) => `<a href="${esc(url)}" style="display:inline-
 const buttons = [phone ? btn('tel:' + phone, `Call ${esc(phone)}`, true) : '', href ? btn(href, 'Open in HubSpot', !phone) : ''].join('');
 const isNew = $('L0: crm_upsert (rules)').first().json.is_new;
 const rows = [['Phone', phone || '—'], ['Email', L.email || '—'], ['City', L.city || '—'], ['Why hot', (r.reasons || []).join('; ')],
-  ['AI note', r.ai_summary || '—'], ['Message', L.message || '—'], ['Contact', isNew ? 'New' : 'Returning']]
+  ['AI note', r.ai_summary || '—'], ['Message', L.message || '—'], ['Contact', isNew ? 'New' : 'Returning. These details were NOT saved to HubSpot (anyone can type an email into the form). Check before acting.']]
   .map(([k, v]) => `<tr><td style="padding:8px 16px 8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260;vertical-align:top;white-space:nowrap">${k}</td><td style="padding:8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624">${esc(v)}</td></tr>`).join('');
 const html = `<!doctype html><html><body style="margin:0;padding:0;background:#F6F8F7">
 <span style="display:none;max-height:0;overflow:hidden">Score ${esc(r.score)}. Call within 5 minutes.</span>
@@ -24,10 +24,11 @@ const html = `<!doctype html><html><body style="margin:0;padding:0;background:#F
 <tr><td style="padding:0 32px 8px">${buttons}</td></tr>
 <tr><td style="padding:8px 32px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table></td></tr>
 </table></td></tr></table></body></html>`;
+const cap = $('Plan reply').first().json.cap_warning === true;
 return [{ json: {
-  send: r.tier === 'hot',
+  send: r.tier === 'hot' || cap,
   to: s.TEAM_EMAIL,
   from: `Lead Engine <${s.FROM_EMAIL}>`,
-  subject: `[HOT ${r.score}] ${L.name}${L.city ? ', ' + L.city : ''}: call now`,
+  subject: cap ? `[HOLD] Over ${s.MAX_REPLIES_PER_HOUR} leads this hour: instant replies paused. Latest: ${L.name}` : `[HOT ${r.score}] ${L.name}${L.city ? ', ' + L.city : ''}: call now`,
   html,
 } }];

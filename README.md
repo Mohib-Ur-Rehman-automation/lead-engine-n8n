@@ -17,7 +17,7 @@ Built for **Halden Solar Co.**, a fictional rooftop-solar installer in Lahore. T
 5. **Replies instantly** by email. In live tests the first reply landed 15 to 19 seconds after the form was sent.
 6. **Alerts the team** about hot leads (score 70 and up), with one-tap call and HubSpot buttons.
 7. **Follows up** on day 1, day 3 and day 7, and **stops the moment the lead replies**. The team gets a "they replied" alert.
-8. **Reports:** a daily 8 am digest email, and a live board showing median first-reply time, every lead placed on a sun arc by the hour it arrived, tiers and pipeline.
+8. **Reports:** a daily 8 am digest email, and a live board showing median first-reply time, every lead placed on a sun arc by the hour it arrived, tiers and pipeline. The board sits behind its own branded sign-in page.
 
 ## What it replaces
 
@@ -49,7 +49,7 @@ flowchart LR
 | **L1 Intake** | Form or webhook in → L0 checks and scores → repeat guard → HubSpot → instant reply → optional AI note (re-score, clamped) → hot-lead alert. |
 | **L2 Follow-ups** | Hourly. Finds leads still waiting, sends follow-up 1, 2 or 3, and closes the lead after 3. Each stage is saved before its email is sent, so a crash can never send the same follow-up twice. |
 | **L3 Reply detector** | Watches the inbox over IMAP. When a known lead replies, marks them "replied" in HubSpot (which stops follow-ups) and alerts the team. Ignores auto-replies and the system's own mail. |
-| **L4 Digest and board** | The 8 am digest email, and the board page at `/webhook/halden-board`. |
+| **L4 Digest and board** | The 8 am digest email, and the board page at `/webhook/halden-board`, with its sign-in page (8-hour sessions, a lock after 5 wrong passwords, sign out). |
 | **L5 Stress test** | Runs 500 generated leads through the real L0 rules and HubSpot, with the AI mocked and no lead emails sent, then writes a pass/fail report. |
 | **L5b Cleanup** | Deletes the stress test's HubSpot contacts afterwards. |
 | **e0 Error alerts** | Emails you when any workflow fails. |
@@ -107,6 +107,8 @@ All people, emails and phone numbers shown are fake. The board and the four-emai
 
 | | |
 |---|---|
+| Board sign-in, light | ![Board sign-in, light](docs/board-login-light.png) |
+| Board sign-in, dark | ![Board sign-in, dark](docs/board-login-dark.png) |
 | Board on a phone | ![Board on a phone](docs/board-mobile.png) |
 | Quote form, light | ![Form, light](docs/form-light.png) |
 | Quote form, dark | ![Form, dark](docs/form-dark.png) |

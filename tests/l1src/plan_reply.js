@@ -27,22 +27,35 @@ const LABELS = {
   ownership: ['Ownership', { owner: 'You own it', renter: 'You rent it' }],
 };
 const facts = Object.entries(LABELS).map(([k, [label, map]]) => map[L[k]] ? [label, map[L[k]]] : null).filter(Boolean);
-if (L.city) facts.push(['City', L.city]);
+if (L.city_safe) facts.push(['City', L.city_safe]);   // only the link-safe city is echoed to the lead
 const factRows = facts.map(([k, v]) => `<tr><td style="padding:6px 16px 6px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0;font-family:${F};font-size:16px;line-height:24px;color:#0F2624">${esc(v)}</td></tr>`).join('');
 const factBox = factRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF4F2;border-radius:8px;margin:8px 0 24px"><tr><td style="padding:16px 20px">
 <div style="font-family:${F};font-size:14px;line-height:20px;font-weight:700;color:#0F2624;margin-bottom:4px">What you told us</div>
 <table role="presentation" cellpadding="0" cellspacing="0">${factRows}</table></td></tr></table>` : '';
 const step = (n, t) => `<tr><td style="padding:0 12px 12px 0;vertical-align:top"><span style="display:inline-block;width:24px;height:24px;line-height:24px;border-radius:12px;background:#145A55;color:#FFFFFF;text-align:center;font-family:${F};font-size:14px;font-weight:700">${n}</span></td><td style="padding:0 0 12px;font-family:${F};font-size:16px;line-height:24px;color:#0F2624">${t}</td></tr>`;
 
-const body = p(`We have your solar request${L.city ? ` for <b>${esc(L.city)}</b>` : ''}. A solar advisor will call you within <b>one working hour</b> (9 am to 7 pm, Monday to Saturday).`)
+const body = p(`We have your solar request${L.city_safe ? ` for <b>${esc(L.city_safe)}</b>` : ''}. A solar advisor will call you within <b>one working hour</b> (9 am to 7 pm, Monday to Saturday).`)
   + factBox
   + `<div style="font-family:${F};font-size:16px;line-height:24px;font-weight:700;color:#0F2624;margin:0 0 12px">What happens next</div>
 <table role="presentation" cellpadding="0" cellspacing="0">${step(1, 'We call to confirm a few details about your roof and usage.')}${step(2, 'We book a free site survey: roof, shade and meter.')}${step(3, 'You get a written quote sized to your bill.')}</table>`
   + p(`<span style="display:inline-block;margin-top:8px">Want to speed things up? Reply to this email with a photo of your latest electricity bill.</span>`)
   + `<p style="margin:0">The ${esc(s.BRAND)} team</p>`;
 
+// Safety cap: the form accepts any address, so a bot could make us email strangers in bulk.
+// Over MAX_REPLIES_PER_HOUR, the lead is still saved and alerted, but no instant reply goes out.
+// Counts live in this workflow's static data (kept for published runs, not manual tests).
+let send = crm.is_new === true && !!L.email, held = false, cap_warning = false;
+if (send && typeof $getWorkflowStaticData === 'function') {
+  const sd = $getWorkflowStaticData('global'), now = Date.now(), cap = Number(s.MAX_REPLIES_PER_HOUR) || 20;
+  sd.replyTimes = (sd.replyTimes || []).filter(t => now - t < 3600e3);
+  if (sd.replyTimes.length >= cap) {
+    send = false; held = true;
+    if (!sd.warnedAt || now - sd.warnedAt > 3600e3) { sd.warnedAt = now; cap_warning = true; }
+  } else sd.replyTimes.push(now);
+}
+
 return [{ json: {
-  send: crm.is_new === true && !!L.email,
+  send, held, cap_warning,
   contact_id: crm.contact_id,
   to: L.email,
   from: `${s.BRAND} <${s.FROM_EMAIL}>`,

@@ -11,11 +11,28 @@ const RULES = {
 
 // Plain text only: objects/arrays become '', control + invisible/bidi characters are removed,
 // and text is cut by whole characters so an emoji is never split in half.
-const INVISIBLE = /[\u0000-\u001F\u007F\u200B-\u200F\u2028-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+// Built from char codes, with no unicode escape codes in the source, so it survives being copied through any tool.
+const INVISIBLE = new RegExp('[' + [[0x00, 0x1F], [0x7F, 0x7F], [0x200B, 0x200F], [0x2028, 0x202E], [0x2060, 0x2064], [0x2066, 0x2069], [0xFEFF, 0xFEFF]]
+  .map(([a, b]) => String.fromCharCode(a) + (a === b ? '' : '-' + String.fromCharCode(b))).join('') + ']', 'g');
 function clean(s, max) {
   if (s === null || s === undefined || typeof s === 'object' || typeof s === 'function') return '';
   return Array.from(String(s).replace(INVISIBLE, ' ').replace(/\s+/g, ' ').trim()).slice(0, max).join('').trim();
 }
+
+// Name and city are echoed back to the lead in our emails, and the form accepts any email address,
+// so a stranger must not be able to make us mail a link or a scam line to someone else.
+// Allowed: letters in any script (Urdu included), spaces, . ' - (and , in city); no digits, @, / or :.
+// A dot glued to a letter gets a space ("M.Ali" -> "M. Ali", "site.com" -> "site. com"), so nothing
+// in a name or city can become a clickable link. A bad name rejects the lead. City is kept as typed for the team (HubSpot, alerts);
+// only city_safe (blank if it fails the check) is ever put in an email to the lead.
+const NAME_OK = /^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u;
+const CITY_OK = /^[\p{L}\p{M}][\p{L}\p{M} .,'-]*$/u;
+const unglue = s => s.replace(/\.(?=\p{L})/gu, '. ');
+const words = s => s.split(' ').filter(Boolean).length;
+const safeName = s => !s || (NAME_OK.test(s) && words(s) <= 8);
+const safeCity = s => (s && CITY_OK.test(s) && words(s) <= 4 && s.length <= 40) ? s : '';
+// Links in the AI's note are removed before it reaches the team, HubSpot or the board.
+const LINK_ANY = /(\S*(:\/\/|www\.)\S*|\b[\w-]+(\.[\w-]+)*\.[a-z]{2,}\b(\/\S*)?)/gi;
 
 function normEmail(e) {
   const v = clean(e, RULES.maxField.email).toLowerCase();
@@ -67,7 +84,7 @@ function tierOf(score) {
 function processLead(raw) {
   const r = raw || {};
   const lead = {
-    name: clean(r.name, RULES.maxField.name),
+    name: unglue(clean(r.name, RULES.maxField.name)),
     email: normEmail(r.email),
     phone: normPhone(r.phone),
     city: clean(r.city, RULES.maxField.city),
@@ -81,6 +98,7 @@ function processLead(raw) {
   const errors = [];
   if (lead.honeypot) errors.push('spam_honeypot');
   if (!lead.name) errors.push('missing_name');
+  else if (!safeName(lead.name)) errors.push('bad_name');
   if (!lead.email && !lead.phone) errors.push('no_valid_contact');
   if (errors.length) return { ok: false, errors, lead };
 
@@ -88,6 +106,7 @@ function processLead(raw) {
   const idempotency_key = fnv1a([lead.email, lead.phone, lead.message, lead.timeline].join('|'));
   const { score, reasons } = ruleScore(lead);
   delete lead.honeypot;
+  lead.city_safe = safeCity(unglue(lead.city));
   return { ok: true, lead, dedupe_key, idempotency_key, rule_score: score, score, tier: tierOf(score),
            reasons, rules_version: RULES.version };
 }
@@ -98,7 +117,7 @@ function applyAiAdjust(result, ai) {
   let adj = Number.parseInt(ai && ai.adjust, 10);
   if (!Number.isFinite(adj)) adj = 0;
   adj = Math.max(-RULES.aiMaxAdjust, Math.min(RULES.aiMaxAdjust, adj));
-  const summary = clean(ai && ai.summary, 160).replace(/[<>]/g, '');
+  const summary = clean(ai && ai.summary, 160).replace(/[<>]/g, '').replace(LINK_ANY, '[link removed]');
   const score = Math.max(0, Math.min(100, result.rule_score + adj));
   return { ...result, ai_adjust: adj, ai_summary: summary, score, tier: tierOf(score),
            reasons: [...result.reasons, adj ? `${adj > 0 ? '+' : ''}${adj} ai` : 'ai 0'] };

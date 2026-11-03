@@ -6,10 +6,10 @@ Import in this order (n8n → Workflows → Create → ⋯ → Import from File)
 |---|---|---|---|
 | `e0_error_alerts.json` | Error alerts | When any workflow fails | "Send an Email": your alert address. SMTP credential. |
 | `L0_core.json` | Core toolbox: validate, score, HubSpot upsert/update, log | Called by the others | "Sheets: append row": `PASTE_YOUR_SHEET_ID`. HubSpot and Google Sheets credentials. |
-| `L1_intake.json` | Intake: form and webhook → score → HubSpot → instant reply → AI note → hot alert | Every submission | "Intake: settings & normalize": L0 ID, emails, portal ID. "Events: seen before?": sheet ID. SMTP, Groq (optional). |
+| `L1_intake.json` | Intake: form and webhook → score → HubSpot → instant reply → AI note → hot alert | Every submission | "Intake: settings & normalize": L0 ID, emails, portal ID, `MAX_REPLIES_PER_HOUR`. "Events: seen before?": sheet ID. SMTP, Groq (optional). |
 | `L2_followups.json` | Follow-ups on day 1, 3 and 7; closes after the third | Hourly | "Settings": L0 ID, emails. HubSpot, SMTP. Keep `TIME_TRAVEL_HOURS: 0` outside testing. |
 | `L3_reply_detector.json` | Spots lead replies, stops follow-ups, alerts the team | New email (IMAP) | "Settings & parse": L0 ID, emails, portal ID. IMAP, HubSpot, SMTP. |
-| `L4_digest_board.json` | Daily digest at 8 am, and the live board at `/webhook/halden-board` | Daily and on page load | "Queries": emails, portal ID. HubSpot, SMTP. |
+| `L4_digest_board.json` | Daily digest at 8 am, and the live board at `/webhook/halden-board` | Daily and on page load | "Queries": emails, portal ID. HubSpot, SMTP. "Auth": `BOARD_PASSWORD` (the board's sign-in password). |
 | `L5_stress_test.json` | 500 generated leads through the real rules and HubSpot; AI mocked; no lead emails | Manual | "Load 500 test leads": L0 ID, emails. Three Sheets nodes: sheet ID. |
 | `L5b_cleanup_test_contacts.json` | Deletes the stress test's HubSpot contacts | Manual, after L5 | "TestReport: read": sheet ID. HubSpot. |
 

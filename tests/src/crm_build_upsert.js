@@ -28,11 +28,17 @@ for (const item of $input.all()) {
     if (v === undefined || v === null || v === '') delete props[k];
     else props[k] = String(v);
   }
+  // keep_existing: match the contact but change nothing on it. Anyone can type someone else's email
+  // into a public form, so a returning contact's stored details are never overwritten from the form.
+  // A NEW contact still gets every field: L0 writes full_props in "set start state".
+  const send = r.keep_existing === true
+    ? (L.email ? { email: props.email, lead_key: props.lead_key } : { phone: props.phone })
+    : props;
   out.push({ json: {
-    lead_key: r.dedupe_key, tier: r.tier, score: r.score,
+    lead_key: r.dedupe_key, tier: r.tier, score: r.score, full_props: props,
     hs_body: { inputs: [L.email
-      ? { idProperty: 'email', id: L.email, properties: props }
-      : { idProperty: 'lead_key', id: r.dedupe_key, properties: props }] },
+      ? { idProperty: 'email', id: L.email, properties: send }
+      : { idProperty: 'lead_key', id: r.dedupe_key, properties: send }] },
   } });
 }
 return out;

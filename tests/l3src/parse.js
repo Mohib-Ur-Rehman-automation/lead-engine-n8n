@@ -46,7 +46,7 @@ for (const it of $input.all()) {
   const isRe = /^(re|aw|sv)\s*:/i.test(subject);
   if (!from || !/@/.test(from)) continue;
   if (from === own && !isRe) continue;               // the system's own mail
-  if (/^\[(HOT|REPLY)\b/i.test(subject)) continue;   // our alerts, even if forwarded
+  if (/^\[(HOT|REPLY|HOLD)\b/i.test(subject)) continue;   // our alerts, even if forwarded
   if (AUTO_SUBJECT.test(subject) || AUTO_SENDER.test(from)) continue;   // machines, not people (marker comes first)   // machines, not people
   out.push({ json: {
     settings: SETTINGS, from, subject: subject.slice(0, 200),

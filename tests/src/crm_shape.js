@@ -13,6 +13,7 @@ return $input.all().map((it, i) => {
     tier: b.tier,
     score: b.score,
     init_props: {
+      ...(b.full_props || {}),
       engine_status: 'awaiting',
       followup_stage: '0',
       next_followup_at: String(Date.now() + 24 * 3600 * 1000),
