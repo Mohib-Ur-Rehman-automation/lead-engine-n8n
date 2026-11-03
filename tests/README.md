@@ -3,7 +3,7 @@
 Plain Node.js (18 or newer), no installs. Each test runs the exact Code-node source from the workflows against fake inputs.
 
 ```bash
-node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && node test_l3.js && node test_l5.js && node test_attacks.js && node test_auth.js
+node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && node test_l3.js && node test_l5.js && node test_attacks.js && node test_auth.js && node test_fuzz.js
 ```
 
 | Test | What it checks | Expected |
@@ -15,6 +15,7 @@ node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && no
 | `test_l3.js` | Inbox parsing: own mail skipped, unknown senders dropped, already-replied ignored, real replies marked and alerted | `11 checks passed` |
 | `test_l5.js` | The stress-test report logic, plus a sabotage check that a broken AI clamp is caught | `[L5 PASS] 500/500` and `broken clamp caught` |
 | `test_attacks.js` | Misuse by strangers: scam text and links in name/city, mail bombs, overwriting a real lead, the test flag, prompt-injected links, header and HTML injection, scam text in follow-ups | `0 attack(s) broke through` (see `BREAK_TEST.md`) |
+| `test_fuzz.js` | Round 2: random and mutated input against the rules that must always hold: no crash, no links or HTML to strangers, caps, whitelisted CRM fields, sign-in sessions | `0 failed` |
 | `test_auth.js` | The board's sign-in page: placeholder password refused, theme kept, 5-try lock, session cookie flags, forged/expired sessions, sign-out, digest skips the login | `Board login: 20 checks passed.` |
 
 Files:

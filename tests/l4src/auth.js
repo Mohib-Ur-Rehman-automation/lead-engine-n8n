@@ -17,8 +17,11 @@ sd.fails = (sd.fails || []).filter(t => now - t < LOCK_MINUTES * 60e3);
 
 let isPost = false;
 try { isPost = $('Board login (POST)').isExecuted === true; } catch (e) { isPost = false; }
-const query = it.query || {};
-const body = (it.body && typeof it.body === 'object') ? it.body : {};
+// Text only: a script can post JSON like {"password":{"toString":1}}, and String() on that throws (a crash, then an e0 email).
+// Any value that isn't plain text becomes '', so it just counts as a wrong password.
+const textOnly = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).map(([k, v]) => [k, (v !== null && typeof v === 'object') || typeof v === 'function' ? '' : v]));
+const query = textOnly(it.query);
+const body = textOnly(it.body);
 const theme = ['light', 'dark'].includes(String(query.theme || body.theme)) ? String(query.theme || body.theme) : '';
 const cookies = Object.fromEntries(String((it.headers || {}).cookie || '').split(';').map(c => c.trim().split('=')).filter(p => p[0]));
 const token = cookies[COOKIE] || '';

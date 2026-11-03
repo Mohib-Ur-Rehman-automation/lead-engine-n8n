@@ -52,3 +52,25 @@ The suite has 12 checks: attacks A1 to A9, plus three sub-checks (A3b, A4b, A6b)
 ## How these results were produced
 
 The attacks run in Node.js against the exact Code-node source, with HubSpot, Sheets, Gmail and the AI mocked. They have not yet been run on a live n8n instance. The live checks are listed in the main README under "How it was tested".
+
+
+# Round 2: invariant fuzzing, 3 Nov 2026
+
+Round 1 tried attacks I thought of. Round 2 turned that around: I wrote down the rules the system must never break, then threw random and mutated input at the real Code nodes and checked every rule each time. The inputs included links, look-alike dots, HTML, line breaks, very long text, numbers, lists, and JSON objects that pretend to be text. Run it with `node test_fuzz.js`.
+
+**Rules checked:** intake never crashes. The public form can't set the test flag. An accepted name, and the safe city, carry no link. The instant reply to a stranger carries no link or HTML from the form, and its subject has no line break. The AI moves a score by at most 10 and never adds a link. The hourly reply cap holds. `crm_update` only sends whitelisted fields. Follow-ups carry no link or HTML from stored data, never exceed the hourly batch, and are only #1 to #3. Our own mail and alerts never count as lead replies. The board sign-in never crashes, and the board only opens with a session that sign-in issued.
+
+## What round 2 found, and the fix
+
+| # | Found | Fix |
+|---|---|---|
+| B1 | A JSON sign-in request with `{"password":{"toString":1}}` crashed the Auth node, and every request sent an e0 email. **Confirmed live.** | Auth reads only plain-text values from the request; anything else counts as a wrong password |
+| F3 | Follow-ups echoed the stored first name with no link check. Round 1 said L2 checks name and city, but only the city was checked. Someone typing a name into HubSpot by hand (`http://...`, or text with a line break) got it into the subject and greeting | The stored first name gets the same check as the city. Anything that isn't a plain name becomes "there". Checked in n8n's sandbox before publishing |
+
+After the fixes: about 150,000 fuzz checks over 6 seeds, 0 failures. All earlier tests still pass.
+
+## Known limits (round 2)
+
+- **A name like `www.claim-refund.com`** is accepted as `www. claim-refund. com`. The spaces mean it can't be clicked, but someone could still read it as a web address. That's the trade-off of the A2 fix.
+- **A line break typed by hand into a HubSpot name** reaches the subject of the internal `[REPLY]` alert. The mail library flattens it, and the alert only goes to the team.
+- **L3 Plan alert** shows "Lead Engine, " with nothing after the comma, because L3's Settings has no `BRAND`. Cosmetic.
