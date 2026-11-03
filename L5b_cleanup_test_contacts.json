@@ -1,0 +1,140 @@
+{
+  "name": "L5b Cleanup test contacts (Lead Engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## L5b · Cleanup after a test run\nDeletes (archives) every HubSpot contact the stress test created, using the `cid:` IDs saved in **TestReport**.\nHubSpot keeps archived contacts restorable for 90 days.\n\nAfterwards, clear the test rows from **Events** and **TestReport** by hand (keep row 1, the headers).",
+        "height": 300,
+        "width": 620,
+        "color": 3
+      },
+      "id": "adc92e11-ff58-4dec-b379-c09675f7a6e7",
+      "name": "Note e76fe7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        -176
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "25807332-9f30-4c1b-91dc-ccfbd379d17a",
+      "name": "Run cleanup",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "TestReport",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "3296b02b-e035-4897-a1a6-26f73c159204",
+      "name": "TestReport: read",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -80,
+        192
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect the HubSpot contact IDs the test run created (stored as cid:<id> in TestReport) -> archive in chunks of 100.\nconst rows = $input.all().filter(it => it.json && it.json.run_ts);\nconst latest = rows.map(it => String(it.json.run_ts)).sort().pop();   // older runs were already cleaned up\nconst ids = new Set();\nfor (const it of rows.filter(r => String(r.json.run_ts) === latest)) {\n  const m = String((it.json && it.json.detail) || '').match(/cid:(\\d+)/);\n  if (m) ids.add(m[1]);\n}\nconst list = [...ids];\nif (!list.length) throw new Error('L5b: no test contact IDs found in TestReport. Nothing to delete.');\nconst out = [];\nfor (let i = 0; i < list.length; i += 100) out.push({ json: { count: list.slice(i, i + 100).length, body: { inputs: list.slice(i, i + 100).map(id => ({ id })) } } });\nreturn out;\n"
+      },
+      "id": "2dcbf807-b43a-44d1-931c-e2df64e30cda",
+      "name": "Collect test contact IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/batch/archive",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "11efc0ec-73eb-496b-bf9a-a87d6f51e1a6",
+      "name": "HubSpot: archive contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        192
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Run cleanup": {
+      "main": [
+        [
+          {
+            "node": "TestReport: read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TestReport: read": {
+      "main": [
+        [
+          {
+            "node": "Collect test contact IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect test contact IDs": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: archive contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}
