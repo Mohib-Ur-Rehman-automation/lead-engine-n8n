@@ -10,8 +10,25 @@ const phone = L.phone ? '+' + L.phone : '';
 const btn = (url, label, solid) => `<a href="${esc(url)}" style="display:inline-block;margin:0 8px 8px 0;padding:12px 20px;border-radius:8px;font-family:${F};font-size:16px;line-height:20px;font-weight:700;text-decoration:none;${solid ? 'background:#145A55;color:#FFFFFF' : 'border:1px solid #145A55;color:#145A55'}">${label}</a>`;
 const buttons = [phone ? btn('tel:' + phone, `Call ${esc(phone)}`, true) : '', href ? btn(href, 'Open in HubSpot', !phone) : ''].join('');
 const isNew = $('L0: crm_upsert (rules)').first().json.is_new;
-const rows = [['Phone', phone || '—'], ['Email', L.email || '—'], ['City', L.city || '—'], ['Why hot', (r.reasons || []).join('; ')],
-  ['AI note', r.ai_summary || '—'], ['Message', L.message || '—'], ['Contact', isNew ? 'New' : 'Returning. These details were NOT saved to HubSpot (anyone can type an email into the form). Check before acting.']]
+// Score reasons in plain words: "+20 bill 25k_50k" -> "+20 bill Rs 25–50k".
+const WORDS = {
+  'bill under_10k': 'bill under Rs 10k', 'bill 10k_25k': 'bill Rs 10–25k', 'bill 25k_50k': 'bill Rs 25–50k',
+  'bill 50k_100k': 'bill Rs 50–100k', 'bill over_100k': 'bill over Rs 100k',
+  'timeline now': 'wants it now', 'timeline 1_3_months': 'timeline 1–3 months', 'timeline 3_6_months': 'timeline 3–6 months',
+  'property house': 'house', 'property business': 'business', 'ownership owner': 'owns it', 'ownership renter': 'rents',
+  'both contacts': 'gave phone and email', 'ai': 'AI read of the message',
+};
+const plain = x => {
+  const t = String(x == null ? '' : x).trim();
+  if (t === 'ai 0') return '';
+  const m = t.match(/^([+-]?[0-9]+) (.+)$/);
+  if (!m) return t;
+  const w = Object.prototype.hasOwnProperty.call(WORDS, m[2]) ? WORDS[m[2]] : m[2].replace(/_/g, ' ');
+  return `${m[1]} ${w}`;
+};
+const why = (r.reasons || []).map(plain).filter(Boolean).join(' · ') || '—';
+const rows = [['Phone', phone || '—'], ['Email', L.email || '—'], ['City', L.city || '—'], ['Why hot', why],
+  ['AI note', r.ai_summary || '—'], ['Message', L.message || '—'], ['Contact', isNew ? 'First time we have seen them' : 'Returning. These details were NOT saved to HubSpot (anyone can type an email into the form). Check before acting.']]
   .map(([k, v]) => `<tr><td style="padding:8px 16px 8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260;vertical-align:top;white-space:nowrap">${k}</td><td style="padding:8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624">${esc(v)}</td></tr>`).join('');
 const html = `<!doctype html><html><body style="margin:0;padding:0;background:#F6F8F7">
 <span style="display:none;max-height:0;overflow:hidden">Score ${esc(r.score)}. Call within 5 minutes.</span>

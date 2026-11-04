@@ -38,7 +38,7 @@ if (mode === 'digest') {
   const hotRows = hot.slice(0, 15).map(l => {
     const href = link(l);
     const nm = href ? `<a href="${esc(href)}" style="color:#145A55;text-decoration:underline">${esc(nameOf(l))}</a>` : esc(nameOf(l));
-    return `<tr><td style="padding:12px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624"><b>${nm}</b><br><span style="font-size:14px;color:#4E6260">${esc(l.city || 'No city')} · score ${esc(l.lead_score || '—')} · ${esc(l.engine_status || '—')}</span></td></tr>`;
+    return `<tr><td style="padding:12px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624"><b>${nm}</b><br><span style="font-size:14px;color:#4E6260">${esc(l.city || 'No city')} · score ${esc(l.lead_score || '—')} · ${esc(({ awaiting: 'waiting on lead' })[l.engine_status] || l.engine_status || '—')}</span></td></tr>`;
   }).join('') || `<tr><td style="padding:12px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;color:#4E6260">No hot leads in the last 24 hours.</td></tr>`;
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#F6F8F7">
 <span style="display:none;max-height:0;overflow:hidden">${totalRecent} new leads, ${tiers.hot} hot, median first reply ${esc(fmtSecs(median))}.</span>
@@ -48,7 +48,7 @@ if (mode === 'digest') {
 <tr><td style="padding:24px 32px 0;font-family:${H};font-size:20px;line-height:28px;color:#0F2624"><span style="display:inline-block;width:18px;height:9px;background:#E0A21B;border-radius:9px 9px 0 0;margin-right:8px;vertical-align:middle"></span>${esc(S.BRAND)}</td></tr>
 <tr><td style="padding:16px 32px 0"><div style="font-family:${H};font-size:30px;line-height:38px;color:#0F2624">Daily leads</div><div style="font-family:${F};font-size:14px;line-height:20px;color:#4E6260">${esc(windowLabel)}, sent ${esc(pkt(now))} PKT. ${esc(capped)}</div></td></tr>
 <tr><td style="padding:16px 32px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${kpi(totalRecent, 'New leads')}${kpi(fmtSecs(median), 'Median first reply')}${kpi(`${tiers.hot}/${tiers.warm}/${tiers.cold}`, 'Hot / warm / cold')}${kpi(`${replyRate}%`, 'Replied')}</tr></table></td></tr>
-<tr><td style="padding:8px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260">Pipeline now: ${pipe.awaiting} awaiting, ${pipe.replied} replied, ${pipe.closed} closed.</td></tr>
+<tr><td style="padding:8px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260">Pipeline now: ${pipe.awaiting} waiting on lead, ${pipe.replied} replied, ${pipe.closed} closed.</td></tr>
 <tr><td style="padding:24px 32px 8px"><div style="font-family:${H};font-size:22px;line-height:28px;color:#0F2624">Hot leads</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${hotRows}</table></td></tr>
 <tr><td style="padding:16px 32px 24px;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260">Lead Engine daily digest. Demo business; data from HubSpot.</td></tr>
 </table></td></tr></table></body></html>`;
@@ -76,7 +76,7 @@ const dots = leads.map((l, i) => {
   const r = (tier === 'hot' ? 7 : tier === 'warm' ? 5.5 : 4) * k;
   return `<g><title>${esc(nameOf(l))}, ${tier}, arrived ${clock(real)}</title><circle class="d-${tier}" cx="${p.x}" cy="${p.y}" r="${r}"/></g>`;
 }).join('');
-const ticks = [[6, '6 am'], [10, '10 am'], [14, '2 pm'], [18, '6 pm'], [22, '10 pm']].map(([h, label]) => {
+const ticks = [[6, '6 am'], [12, 'noon'], [18, '6 pm'], [22, '10 pm']].map(([h, label]) => {
   const p = pos(h, RAD - 60); return (h === 6 || h === 22) ? `<text x="${h === 6 ? 130 : 870}" y="434" text-anchor="middle">${label}</text>` : `<text x="${p.x}" y="${p.y + 6}" text-anchor="middle">${label}</text>`;
 }).join('');
 const m = split(median);
@@ -84,7 +84,7 @@ const tb = (n, cls, first, last) => n ? `<span class="${cls}" style="flex:${n};b
 const tierBar = (tiers.hot + tiers.warm + tiers.cold)
   ? `<div class="tierbar">${tb(tiers.hot, 'b-hot', true, !tiers.warm && !tiers.cold)}${tb(tiers.warm, 'b-warm', !tiers.hot, !tiers.cold)}${tb(tiers.cold, 'b-cold', !tiers.hot && !tiers.warm, true)}</div>`
   : '<div class="tierbar"><span class="b-empty" style="flex:1;border-radius:4px"></span></div>';
-const STATUS = { replied: ['Replied', 'st-good'], awaiting: ['Awaiting reply', 'st-wait'], closed: ['Closed', 'st-closed'] };
+const STATUS = { replied: ['Replied', 'st-good'], awaiting: ['Waiting on lead', 'st-wait'], closed: ['Closed', 'st-closed'] };
 const rows = leads.map(l => {
   const href = link(l);
   const nm = href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(nameOf(l))}</a>` : esc(nameOf(l));
@@ -92,9 +92,10 @@ const rows = leads.map(l => {
   const tier = ['hot', 'warm', 'cold'].includes(l.lead_tier) ? l.lead_tier : '';
   const st = STATUS[l.engine_status] || [l.engine_status || '—', 'st-closed'];
   const stage = Math.max(0, Math.min(3, Number(l.followup_stage) || 0));
+  const tel = String(l.phone || '').replace(/[^0-9]/g, '');
   const fu = [1, 2, 3].map(n => `<span class="${n <= stage ? 'fu-on' : 'fu-off'}"></span>`).join('');
   return `<tr>
-<td class="muted nowrap">${esc(pkt(tsOf(l.createdate)))}</td>
+<td class="muted nowrap arr">${esc(pkt(tsOf(l.createdate)))}${tel ? ` <a class="call" href="tel:+${esc(tel)}">Call</a>` : ''}</td>
 <td><div class="lead">${nm}</div><div class="small muted">${esc(l.city || 'No city')}</div></td>
 <td class="nowrap">${tier ? `<span class="tier"><span class="g g-${tier}"></span>${tier[0].toUpperCase() + tier.slice(1)}</span> <span class="muted">${esc(l.lead_score || '')}</span>` : '<span class="muted">—</span>'}</td>
 <td class="nowrap">${Number.isFinite(fr) ? esc(fmtSecs(fr)) : '<span class="muted">No email</span>'}</td>
@@ -134,7 +135,7 @@ header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:cen
 .hero .base{stroke:var(--rule);stroke-width:1.5}
 .hero .path{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:2 8}
 .hero text{fill:var(--muted);font:400 16px 'DM Sans',sans-serif}
-.hero circle{stroke:var(--bg);stroke-width:3}
+.hero circle{stroke:none}
 .d-hot{fill:var(--hot)}.d-warm{fill:var(--warm)}.d-cold{fill:var(--cold)}
 .center{position:absolute;left:0;right:0;bottom:40px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;pointer-events:none}
 .big{font-size:clamp(56px,9vw,95px);line-height:1;letter-spacing:-.02em}
@@ -153,12 +154,19 @@ th:first-child,td:first-child{padding-left:0}th:last-child,td:last-child{padding
 .lead{font-weight:500}.lead a{text-decoration:none;border-bottom:1px solid var(--rule)}.lead a:hover{border-color:var(--ink)}
 .tier{display:inline-flex;align-items:center;gap:8px}
 .g{border-radius:50%;display:inline-block}.g-hot{width:12px;height:12px;background:var(--hot)}.g-warm{width:10px;height:10px;background:var(--warm)}.g-cold{width:8px;height:8px;background:var(--cold)}
-.sd{width:8px;height:8px;border-radius:50%;display:inline-block}.st-good{background:var(--good)}.st-wait{background:var(--accent)}.st-closed{background:var(--rule)}
+.sd{width:8px;height:8px;border-radius:50%;display:inline-block}.st-good{background:var(--good)}.st-wait{background:var(--sun)}.st-closed{background:var(--rule)}
 .fu{display:inline-flex;gap:4px;padding-top:10px}.fu span{width:16px;height:6px;border-radius:3px}.fu-on{background:var(--ink)}.fu-off{background:var(--rule)}
 .note{max-width:300px}
+.call{display:none}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border-top:1px solid var(--rule);padding-top:16px;font-size:14px;line-height:20px;color:var(--muted)}
-@media (max-width:640px){.wrap{padding:24px 16px 40px;gap:32px}.meta{text-align:left}.center{position:static;margin-top:16px}.hero text{font-size:30px}.kpi .v{font-size:31px;line-height:38px}}
+@media (max-width:640px){.wrap{padding:24px 16px 40px;gap:32px}.meta{text-align:left}.center{position:static;margin-top:16px}.hero text{font-size:30px}.kpi .v{font-size:31px;line-height:38px}
+.kpis{grid-template-columns:1fr 1fr;gap:20px 16px}.kpis .kpi:last-child{grid-column:1/-1}
+table,tbody{display:block;min-width:0}thead{display:none}.tbl{overflow:visible}
+tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:6px;padding:16px 0;border-top:1px solid var(--rule)}tr:first-child{border-top:0}
+td{padding:0!important;border:0}td:nth-child(2){grid-area:1/1}td:nth-child(3){grid-area:1/2;text-align:right}td:nth-child(5){grid-area:2/1}td:nth-child(4){grid-area:2/2;text-align:right}
+td:nth-child(6){display:none}td:nth-child(7){grid-column:1/-1;grid-row:3;max-width:none}td.arr{grid-column:1/-1;grid-row:4;display:flex;justify-content:space-between;align-items:center;font-size:14px}td.empty{grid-column:1/-1}
+.call{display:inline-flex;align-items:center;height:40px;padding:0 18px;border-radius:8px;background:var(--accent);color:var(--bg);font-weight:700;font-size:14px;text-decoration:none}}
 </style></head><body><div class="wrap">
 <header>
 <div class="brand"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 26 A12 12 0 0 1 32 26 Z" fill="var(--sun)"/><path d="M4 26H36" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/><path d="M20 6v4M9 11l2.8 2.8M31 11l-2.8 2.8" stroke="var(--sun)" stroke-width="2" stroke-linecap="round"/></svg>
@@ -170,12 +178,12 @@ footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border-
 <svg viewBox="0 0 1000 440" role="img" aria-label="Sun arc: each dot is a lead from the last 7 days, placed by the hour it arrived. Larger, darker dots are hotter leads.">
 <line class="base" x1="40" y1="410" x2="960" y2="410"/><path class="path" d="M 130 410 A 370 370 0 0 1 870 410"/>${ticks}${dots}
 </svg>
-<figcaption class="center"><span class="muted">Median first reply</span><span class="serif big">${esc(m.num)}${m.unit ? `<span class="unit"> ${m.unit}</span>` : ''}</span><span class="small muted">${secs.length ? `From form sent to first email, ${secs.length} leads. Each dot is a lead, placed by the hour it arrived.` : 'No first replies yet in this window.'}</span></figcaption>
+<figcaption class="center"><span class="muted">Median first reply</span><span class="serif big">${esc(m.num)}${m.unit ? `<span class="unit"> ${m.unit}</span>` : ''}</span><span class="small muted">${secs.length ? `From form sent to first email, ${secs.length === leads.length ? `all ${secs.length} leads` : `${secs.length} of ${leads.length} leads (${leads.length - secs.length} left no email)`}.<br>Each dot is a lead by arrival hour. Bigger and darker = hotter.` : 'No first replies yet in this window.'}</span></figcaption>
 </figure>
 <section class="kpis" aria-label="Summary">
 <div class="kpi"><div class="serif v">${totalRecent}</div><div class="small muted">New leads</div></div>
 <div class="kpi"><div class="serif v">${replyRate}%</div><div class="small muted">Replied, ${pipe.replied} people</div></div>
-<div class="kpi"><div class="serif v">${pipe.awaiting}</div><div class="small muted">Awaiting reply, ${pipe.closed} closed</div></div>
+<div class="kpi"><div class="serif v">${pipe.awaiting}</div><div class="small muted">Waiting on lead, ${pipe.closed} closed</div></div>
 <div class="kpi">${tierBar}<div class="small muted">${tiers.hot} hot, ${tiers.warm} warm, ${tiers.cold} cold</div></div>
 </section>
 <section style="display:flex;flex-direction:column;gap:16px">

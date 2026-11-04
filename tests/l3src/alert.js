@@ -4,7 +4,10 @@ const F = "'DM Sans','Helvetica Neue',Arial,sans-serif", H = "'DM Serif Display'
 return $('Decide').all().map(({ json: d }) => {
   const s = d.settings;
   const href = s.HUBSPOT_PORTAL_ID ? `https://app.hubspot.com/contacts/${encodeURIComponent(s.HUBSPOT_PORTAL_ID)}/record/0-1/${encodeURIComponent(d.contact_id)}` : '';
-  const btn = href ? `<a href="${esc(href)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#145A55;color:#FFFFFF;font-family:${F};font-size:16px;line-height:20px;font-weight:700;text-decoration:none">Open in HubSpot</a>` : '';
+  const digits = String(d.phone || '').replace(/[^0-9]/g, '');
+  const tel = digits ? '+' + digits : '';
+  const b = (url, label, solid) => `<a href="${esc(url)}" style="display:inline-block;margin:0 8px 8px 0;padding:12px 20px;border-radius:8px;font-family:${F};font-size:16px;line-height:20px;font-weight:700;text-decoration:none;${solid ? 'background:#145A55;color:#FFFFFF' : 'border:1px solid #145A55;color:#145A55'}">${label}</a>`;
+  const btn = [tel ? b('tel:' + tel, `Call ${esc(tel)}`, true) : '', href ? b(href, 'Open in HubSpot', !tel) : ''].join('');
   const tierBadge = d.tier ? `<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:${d.tier === 'hot' ? '#E0A21B' : '#EEF4F2'};color:#0F2624;font-weight:700;margin-right:8px">${esc(d.tier[0].toUpperCase() + d.tier.slice(1))} ${esc(d.score)}</span>` : '';
   const rows = [['From', d.from], ['Phone', d.phone || '—'], ['City', d.city || '—'], ['Follow-ups sent', `${d.stage} of 3`], ['Subject', d.subject]]
     .map(([k, v]) => `<tr><td style="padding:8px 16px 8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:14px;line-height:20px;color:#4E6260;vertical-align:top;white-space:nowrap">${k}</td><td style="padding:8px 0;border-top:1px solid #DFE6E4;font-family:${F};font-size:16px;line-height:24px;color:#0F2624">${esc(v)}</td></tr>`).join('');
@@ -13,7 +16,7 @@ return $('Decide').all().map(({ json: d }) => {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F8F7"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #DFE6E4;border-radius:12px">
 <tr><td style="height:4px;line-height:4px;font-size:0;background:#145A55;border-radius:12px 12px 0 0">&nbsp;</td></tr>
-<tr><td style="padding:24px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260">${tierBadge}Lead Engine, ${esc(s.BRAND)}</td></tr>
+<tr><td style="padding:24px 32px 0;font-family:${F};font-size:14px;line-height:20px;color:#4E6260">${tierBadge}Lead Engine, ${esc(s.BRAND || 'Halden Solar Co.')}</td></tr>
 <tr><td style="padding:16px 32px 0;font-family:${H};font-size:28px;line-height:36px;color:#0F2624">${esc(d.name)} replied</td></tr>
 <tr><td style="padding:8px 32px 16px;font-family:${F};font-size:16px;line-height:26px;color:#0F2624">Automatic follow-ups are stopped. Take it from here.</td></tr>
 <tr><td style="padding:0 32px 16px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF4F2;border-radius:8px"><tr><td style="padding:16px 20px;font-family:${F};font-size:16px;line-height:26px;color:#0F2624"><div style="font-size:14px;line-height:20px;font-weight:700;margin-bottom:4px">They wrote</div>${esc(d.snippet || '(no text)')}</td></tr></table></td></tr>

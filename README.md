@@ -99,7 +99,7 @@ node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && no
 
 ## Sample output
 
-All people, emails and phone numbers shown are fake. The board and the four-email overview are renders of this repo's code with sample data; everything else is a screenshot of the running system.
+All people, emails and phone numbers shown are fake. The board, the emails, the quote form and the thank-you page are renders of this repo's code (the form through n8n's own form template), all from one sample dataset, so the same lead shows the same score and answers on every screen. Everything else is a screenshot of the running system.
 
 **Board**, light and dark (it follows the viewer's system setting; the sun/moon switch overrides it)
 

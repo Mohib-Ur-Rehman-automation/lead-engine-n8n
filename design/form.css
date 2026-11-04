@@ -54,9 +54,14 @@ section::before {
 /* What happens next, plus the sun-arc illustration */
 section::after {
   grid-area: steps; display: block; margin-top: 24px; max-width: 520px; white-space: pre-line;
-  content: 'Tell us about your roof and your monthly bill. You get a personal reply by email in under a minute, and a solar advisor calls you within one working hour.\A\A 1.  Share your bill, timeline and property\A 2.  Get your reply and a rough estimate\A 3.  Book a free site survey for an exact quote';
+  content: 'Tell us about your home and your monthly bill. You get a personal reply by email in under a minute, and a solar advisor calls you within one working hour.\A\A 1.  Share your bill, timeline and property\A 2.  Get your reply and a call\A 3.  Book a free site survey for an exact quote';
   font-size: 18px; line-height: 30px; color: var(--hl-muted);
   padding-bottom: 260px; background: var(--hl-arc) left bottom / 520px 250px no-repeat;
+}
+
+/* Thank-you state: step 1 is done */
+section:has(#submitted-form[style*="block"])::after {
+  content: 'Tell us about your home and your monthly bill. You get a personal reply by email in under a minute, and a solar advisor calls you within one working hour.\A\A ✓  Share your bill, timeline and property\A 2.  Get your reply and a call\A 3.  Book a free site survey for an exact quote';
 }
 
 /* Form card */
@@ -92,7 +97,7 @@ hr, .n8n-link { display: none; }
   font-size: 16px; line-height: 24px; font-weight: 700; color: var(--hl-ink);
 }
 #submitted-form .form-header::after {
-  content: '1.  If you gave an email, your reply arrives in under a minute.\A 2.  A solar advisor calls within one working hour, 9 am to 7 pm, Monday to Saturday.\A 3.  Reply to that email with a photo of your latest bill to speed things up.';
+  content: '1.  Your reply reaches your inbox in under a minute. Left only a phone number? We call you instead.\A 2.  A solar advisor calls within one working hour, 9 am to 7 pm, Monday to Saturday.\A 3.  Keep your latest electricity bill handy for the call.';
   display: block; white-space: pre-line; margin-top: 8px; padding-left: 0;
   font-size: 16px; line-height: 28px; color: var(--hl-muted);
 }
