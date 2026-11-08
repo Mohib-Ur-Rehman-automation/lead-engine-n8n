@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## L2 · Follow-ups\nRuns **every hour**. Finds HubSpot contacts with `engine_status = awaiting`, an email, and `next_followup_at` in the past.\n\nCadence: **#1 day 1 · #2 day 3 · #3 day 7**, then `closed`.\nA reply (L3 sets `replied`) removes them from the search, so follow-ups stop.\nPhone-only leads are never emailed.",
+        "content": "## L2 · Follow-ups\nRuns **every hour**. Finds HubSpot contacts with `engine_status = awaiting`, an email, and `next_followup_at` in the past.\n\nCadence: **#1 day 1 · #2 day 3 · #3 day 7**, then `closed`.\nA reply (L3 sets `replied`) removes them from the search, so follow-ups stop.\nPhone-only leads are never emailed.\n\nAt most **20 per run** (`MAX_PER_RUN` in Settings): 480 a day, under Gmail's limit.\nName and city are echoed only if they're a plain name or place. Anything else (a link, a line break) becomes \"there\", or the city is left out.",
         "height": 232,
         "width": 640,
         "color": 7

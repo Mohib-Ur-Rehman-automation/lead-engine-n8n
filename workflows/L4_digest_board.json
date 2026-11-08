@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## L4 · Digest + Speed-to-Lead board\n**Board:** open `/webhook/halden-board` in a browser. Last 7 days from HubSpot: median seconds from form submit to first email, tiers, reply rate, newest leads. Refreshes every minute.\n**Digest:** every day at **8 AM PKT**, the same numbers for the last 24 hours plus the hot-lead list, emailed to the team.\n\nOne path for both: the trigger decides the mode.",
+        "content": "## L4 · Digest + Speed-to-Lead board\n**Board:** open `/webhook/halden-board` in a browser (sign-in first). Last 7 days from HubSpot: each lead as a dot on a **sun arc** by the hour it arrived, median seconds from form submit to first email, tiers, reply rate, and every lead with its status and follow-ups. Light/dark toggle; on a phone the table becomes cards with a **Call** button. Refreshes every minute.\n**Digest:** every day at **8 AM PKT**, the same numbers for the last 24 hours plus the hot-lead list, emailed to the team.\n\nOne path for both: the trigger decides the mode.",
         "height": 330,
         "width": 660,
         "color": 7

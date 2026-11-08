@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "content": "## 6 · Final save + hot alert\nSaves final score, tier and AI summary, only on a contact this submission created.\nA returning contact's alert says the new details were **not** saved.\nIf the final tier is **hot**, the team gets an alert with phone, reasons and a HubSpot link.",
+        "content": "## 6 · Final save + hot alert\nSaves final score, tier and AI summary, only on a contact this submission created.\nA returning contact's alert says the new details were **not** saved.\nIf the final tier is **hot**, the team gets an alert with a **Call** button, the score reasons in plain words and a HubSpot link.",
         "height": 152,
         "width": 624,
         "color": 2

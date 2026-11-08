@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## L3 · Reply detector\nWatches the inbox over **IMAP**. An email counts as a lead reply if it's **not from the system address**, or it's a **Re:** reply (the system never sends Re: subjects). So our own follow-ups and alerts landing here are ignored.\n\nQuoted text (\"On … wrote:\", lines starting with >) is stripped before it's shown.",
+        "content": "## L3 · Reply detector\nWatches the inbox over **IMAP**. An email counts as a lead reply if it's **not from the system address**, or it's a **Re:** reply (the system never sends Re: subjects). So our own follow-ups and alerts landing here are ignored.\nAlso ignored: out-of-office and auto-replies, bounces, no-reply senders, and our own **[HOT] / [REPLY] / [HOLD]** alerts, even when forwarded.\n\nQuoted text (\"On … wrote:\", lines starting with >) is stripped before it's shown.",
         "height": 300,
         "width": 640,
         "color": 7
@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## Match → stop follow-ups → alert\nLooks the sender up in HubSpot by `lead_key`. Unknown senders are ignored.\nA lead's **first** reply sets `engine_status = replied` (L2 stops emailing them), logs `replied` in **Events**, and emails the team. Later replies from the same lead don't re-alert.",
+        "content": "## Match → stop follow-ups → alert\nLooks the sender up in HubSpot by `lead_key`. Unknown senders are ignored.\nA lead's **first** reply sets `engine_status = replied` (L2 stops emailing them), logs `replied` in **Events**, and emails the team (with a **Call** button when the lead left a phone number). Later replies from the same lead don't re-alert.",
         "height": 300,
         "width": 1240,
         "color": 4
