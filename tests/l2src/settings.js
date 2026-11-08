@@ -3,7 +3,7 @@ const SETTINGS = {
   L0_ID: 'PASTE_L0_ID_FROM_ADDRESS_BAR',
   BRAND: 'Halden Solar Co.',
   FROM_EMAIL: 'PASTE_YOUR_SMTP_EMAIL',
-  MAX_PER_RUN: 20,          // Gmail allows ~500/day; 20 per hour x 24 = 480 stays under it
+  MAX_PER_RUN: 20,          // Gmail's published limit is ~500/day (new accounts get limited sooner); 20/hour x 24 = 480
   TIME_TRAVEL_HOURS: 0,     // TESTING ONLY: pretend it's N hours later (e.g. 25 = day 1 is due). Keep 0 in real use.
 };
 // ===============================

@@ -23,7 +23,7 @@ The suite has 12 checks: attacks A1 to A9, plus three sub-checks (A3b, A4b, A6b)
 |---|---|---|---|
 | A1 | Scam text in **City**, with a stranger's email | The instant reply mailed "We have your solar request for Lahore. Refund due, verify at halden-refund.example" to the stranger, from the business's own Gmail | Only a link-safe city (letters, spaces, `. , ' -`, at most 4 words) is ever put in an email to the lead. The full city is still saved for the team. |
 | A2 | A link as the **name** | The subject read "We got your solar request, bit.ly/claim-refund" | Names allow letters in any script plus `. ' -`. A dot glued to a letter gets a space ("M.Ali" becomes "M. Ali", "site.com" becomes "site. com"), so a name can't become a clickable link. Digits, `@`, `/` and `:` reject the lead as `bad_name`. |
-| A3 | 100 bot submissions with 100 different addresses | 100 instant replies, plus 300 follow-ups queued. Enough to get the Gmail account limited. | At most `MAX_REPLIES_PER_HOUR` (default 20) instant replies per hour. Above that, leads are still saved and scored but not emailed, and the team gets one `[HOLD]` email per hour. L2 follow-ups lowered from 50 to 20 per hour (480 per day, under Gmail's ~500 per day). |
+| A3 | 100 bot submissions with 100 different addresses | 100 instant replies, plus 300 follow-ups queued. Enough to get the Gmail account limited. | At most `MAX_REPLIES_PER_HOUR` (default 20) instant replies per hour. Above that, leads are still saved and scored but not emailed, and the team gets one `[HOLD]` email per hour. L2 follow-ups lowered from 50 to 20 per hour (480 per day, under Gmail's published ~500 per day; new or freshly automated accounts can be limited much sooner). |
 | A4 | A stranger submits using a **real lead's email** | The real lead's name, phone, city, score and tier in HubSpot were overwritten (score 85, hot, became 0, cold) | A returning contact is matched but never changed from the form. The team alert marks it "Returning. These details were NOT saved to HubSpot. Check before acting." New contacts still get every field. |
 | A5 | Public webhook sends `_id` | It could set the internal test flag, which wrote a test ID into the Rejects tab | `_id` is no longer read from public input. Only L5 (internal) sets it. |
 | A6 | Prompt injection that makes the AI put a link in its note | The AI note "Verified buyer… https://halden-crm-login.example" reached the team alert, HubSpot and the board | Links are stripped from the AI note ("[link removed]"). The ±10 score limit already held. |
@@ -51,7 +51,7 @@ The suite has 12 checks: attacks A1 to A9, plus three sub-checks (A3b, A4b, A6b)
 
 ## How these results were produced
 
-The attacks run in Node.js against the exact Code-node source, with HubSpot, Sheets, Gmail and the AI mocked. They have not yet been run on a live n8n instance. The live checks are listed in the main README under "How it was tested".
+The attacks run in Node.js against the exact Code-node source, with HubSpot, Sheets, Gmail and the AI mocked. After the fixes were published, the same attacks were repeated against the live n8n instance and all 12 checks held. The other live checks are listed in the main README under "How it was tested".
 
 
 # Round 2: invariant fuzzing, 3 Nov 2026
@@ -73,4 +73,3 @@ After the fixes: about 150,000 fuzz checks over 6 seeds, 0 failures. All earlier
 
 - **A name like `www.claim-refund.com`** is accepted as `www. claim-refund. com`. The spaces mean it can't be clicked, but someone could still read it as a web address. That's the trade-off of the A2 fix.
 - **A line break typed by hand into a HubSpot name** reaches the subject of the internal `[REPLY]` alert. The mail library flattens it, and the alert only goes to the team.
-- **L3 Plan alert** shows "Lead Engine, " with nothing after the comma, because L3's Settings has no `BRAND`. Cosmetic.

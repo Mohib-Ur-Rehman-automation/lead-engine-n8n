@@ -24,7 +24,7 @@ const TEMPLATES = {
     pre: 'Reply with your bill amount and a good time to call.',
     title: `Hi ${esc(f)}, just checking in.`,
     body: p('We sent you a note yesterday about your solar request and wanted to make sure it reached you.')
-      + p(`If it's easier, reply with your latest electricity bill amount and a good time to call. We'll prepare a rough estimate${city ? ' for ' + esc(city) : ''} before we speak.`),
+      + p(`If it's easier, reply with your latest electricity bill amount and a good time to call, so we can size your system before we speak.`),
   }),
   2: (f, city) => ({
     subject: `A free site survey${city ? ' in ' + city : ''}?`,

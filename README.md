@@ -85,16 +85,17 @@ Data lives in **HubSpot** (contacts and lead fields) and a **Google Sheet** (the
   | Spam (honeypot) | 15/15 |
   | Phone only | 13/13 |
 - **Workflow engine test:** 14 of 14 scenarios passed across 113 real n8n executions, with external services mocked.
-- **Code tests** (in `tests/`, plain Node.js): 15,890 checks on the rules, 3,299 on intake, plus follow-up timing over a simulated 14 days and reply detection. A deliberate sabotage check confirms a broken AI limit is caught.
+- **Code tests** (in `tests/`, plain Node.js): 15,890 checks on the rules, 3,326 on intake, plus follow-up timing over a simulated 14 days and reply detection. A deliberate sabotage check confirms a broken AI limit is caught.
 - **Live run:** real form submissions through to Gmail. The first reply arrived in 15 to 19 seconds.
 - **Break test (3 Nov 2026):** the same code attacked as a stranger would: scam text in the form, mail bombs, overwriting a real lead, prompt injection. 8 of 12 checks broke the first version; all 12 now hold, confirmed again on the live instance. Full log in `tests/BREAK_TEST.md`.
+- **Fuzz test (round 2):** 13,713 random and mutated inputs thrown at the real Code nodes, checking the rules that must always hold (no crash, no links to strangers, caps, whitelisted CRM fields). 0 failures.
 - **Board login:** 20 checks on the sign-in page: wrong passwords, the 5-try lock, forged and expired sessions, sign-out, and that the 8 am digest never needs a login.
 
 Run the code tests yourself:
 
 ```bash
 cd tests
-node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && node test_l3.js && node test_l5.js && node test_attacks.js && node test_auth.js
+node test_core.js && node test_l0.js && node test_l1.js && node test_l2.js && node test_l3.js && node test_l5.js && node test_attacks.js && node test_auth.js && node test_fuzz.js
 ```
 
 ## Sample output
